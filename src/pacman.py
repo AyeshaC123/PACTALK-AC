@@ -1,4 +1,4 @@
-# Ayesha Pacman game
+# Pacman game
 
 import pygame
 import speech_recognition as sr
