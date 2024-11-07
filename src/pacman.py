@@ -125,22 +125,23 @@ class PacMan:
                        math.radians(rotation + end_angle),
                        self.radius)
 
+# iterates over the maze array to draw walls, dots, and power pellets at corresponding positions
 def draw_maze():
     for y in range(GRID_HEIGHT):
         for x in range(GRID_WIDTH):
             cell = MAZE[y][x]
-            rect = pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            rect = pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE) # calculates the coordinate to place the square 
             
             if cell == 1:  # Wall
                 pygame.draw.rect(screen, BLUE, rect)
             elif cell == 0:  # Dot
                 pygame.draw.circle(screen, WHITE,
                                  (x * CELL_SIZE + CELL_SIZE // 2,
-                                  y * CELL_SIZE + CELL_SIZE // 2), 3)
+                                  y * CELL_SIZE + CELL_SIZE // 2), 3) # radius 3 for smaller dot
             elif cell == 3:  # Power pellet
                 pygame.draw.circle(screen, WHITE,
                                  (x * CELL_SIZE + CELL_SIZE // 2,
-                                  y * CELL_SIZE + CELL_SIZE // 2), 8)
+                                  y * CELL_SIZE + CELL_SIZE // 2), 8) # radius 8 for bigger circle for pellet
 
 def voice_command_listener():
     recognizer = sr.Recognizer()
@@ -189,8 +190,8 @@ def main():
     running = True
     
     while running:
-        # Handle events
-        for event in pygame.event.get():
+        # Handle events and update game state
+        for event in pygame.event.get(): # game loop
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
@@ -216,7 +217,7 @@ def main():
         # Update game state
         pacman.move()
         
-        # Draw
+        # Draw screen with maze and pacman
         screen.fill(BLACK)
         draw_maze()
         pacman.draw()
@@ -226,9 +227,9 @@ def main():
         score_text = f"Score: {pacman.score}"
         text_surface = font.render(score_text, True, WHITE)
         screen.blit(text_surface, (10, 10))
-        
-        pygame.display.flip()
-        clock.tick(30)
+
+        pygame.display.flip() # Updates game state and redraw graphics 
+        clock.tick(30) # Run at 30 frames per second (run at consistent speed)
     
     pygame.quit()
 
