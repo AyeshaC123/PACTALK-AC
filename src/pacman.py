@@ -10,10 +10,10 @@ import math
 # Initialize Pygame
 pygame.init()
 
-# Constants
-CELL_SIZE = 30
-GRID_WIDTH = 19
-GRID_HEIGHT = 21
+# Constants 
+CELL_SIZE = 30 # pixels
+GRID_WIDTH = 19 # number of cells horizontally
+GRID_HEIGHT = 21 # number of cells vertically
 SCREEN_WIDTH = GRID_WIDTH * CELL_SIZE
 SCREEN_HEIGHT = GRID_HEIGHT * CELL_SIZE
 
@@ -229,7 +229,7 @@ def main():
         screen.blit(text_surface, (10, 10))
 
         pygame.display.flip() # Updates game state and redraw graphics 
-        clock.tick(30) # Run at 30 frames per second (run at consistent speed)
+        clock.tick(30) # Run at 30 frames per second (game loop runs 30 times per sec)
     
     pygame.quit()
 
