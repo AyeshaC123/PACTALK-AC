@@ -160,13 +160,13 @@ def voice_command_listener():
                 command = recognizer.recognize_google(audio).lower()
                 print(f"Recognized: {command}")
                 
-                if "up" in command:
+                if "move up" in command:
                     command_queue.put([0, -1])
-                elif "down" in command:
+                elif "move down" in command:
                     command_queue.put([0, 1])
-                elif "left" in command:
+                elif "move left" in command:
                     command_queue.put([-1, 0])
-                elif "right" in command:
+                elif "move right" in command:
                     command_queue.put([1, 0])
                 elif "stop" in command or "quit" in command:
                     command_queue.put("QUIT")
