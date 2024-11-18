@@ -1,6 +1,6 @@
 import pygame
 import speech_recognition as sr
-import threadinggit 
+import threading
 import time
 from queue import Queue
 import math
@@ -29,10 +29,11 @@ pygame.display.set_caption("Voice-Controlled Pac-Man")
 # Command queue for voice inputs
 command_queue = Queue()
 
-# Game States
+# Game States - properly defined enum
 class GameState(Enum):
-    MENU = 1
-    PLAYING = 2
+    MENU = "menu"
+    PLAYING = "playing"
+    PAUSED = "paused"
 
 # Maze layout
 MAZE = [
@@ -118,6 +119,9 @@ class PacMan:
                        math.radians(rotation + end_angle),
                        self.radius)
 
+
+
+
 def draw_maze():
     for y in range(GRID_HEIGHT):
         for x in range(GRID_WIDTH):
@@ -135,7 +139,28 @@ def draw_maze():
                                  (x * CELL_SIZE + CELL_SIZE // 2,
                                   y * CELL_SIZE + CELL_SIZE // 2), 8)
 
+
+def draw_pause_screen():
+    # Create semi-transparent overlay
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay.fill((0, 0, 0))
+    overlay.set_alpha(128)
+    screen.blit(overlay, (0, 0))
+    
+    # Draw "PAUSED" text
+    font = pygame.font.Font(None, 74)
+    text = font.render("PAUSED", True, WHITE)
+    text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    screen.blit(text, text_rect)
+    
+    # Draw instruction text
+    font_small = pygame.font.Font(None, 36)
+    instruction = font_small.render("Say 'Resume' to continue", True, WHITE)
+    instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
+    screen.blit(instruction, instruction_rect)
+
 def draw_start_screen():
+    screen.fill(BLACK)
     title_font = pygame.font.Font(None, 53)
     instruction_font = pygame.font.Font(None, 36)
     
@@ -150,6 +175,8 @@ def draw_start_screen():
         "Voice Commands:",
         '"Start" - Begin game',
         '"Move up/down/left/right" - Control Pacman',
+        '"Pause" - Pause game',
+        '"Resume" - Resume game',
         '"Stop" or "Quit" - Exit game',
         "",
         "Press Enter or say 'Start' to begin"
@@ -161,6 +188,7 @@ def draw_start_screen():
             center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + i * 40)
         )
         screen.blit(text_surface, text_rect)
+
 
 def voice_command_listener():
     recognizer = sr.Recognizer()
@@ -183,17 +211,21 @@ def voice_command_listener():
                         print(f"Recognized: {command}")
                         
                         if "start" in command:
-                            command_queue.put("START")
+                            command_queue.put(("STATE", GameState.PLAYING))
+                        elif "pause" in command:
+                            command_queue.put(("STATE", GameState.PAUSED))
+                        elif "resume" in command:
+                            command_queue.put(("STATE", GameState.PLAYING))
                         elif "move up" in command:
-                            command_queue.put([0, -1])
+                            command_queue.put(("MOVE", [0, -1]))
                         elif "move down" in command:
-                            command_queue.put([0, 1])
+                            command_queue.put(("MOVE", [0, 1]))
                         elif "move left" in command:
-                            command_queue.put([-1, 0])
+                            command_queue.put(("MOVE", [-1, 0]))
                         elif "move right" in command:
-                            command_queue.put([1, 0])
+                            command_queue.put(("MOVE", [1, 0]))
                         elif "stop" in command or "quit" in command:
-                            command_queue.put("QUIT")
+                            command_queue.put(("QUIT", None))
                             running = False
                     except sr.UnknownValueError:
                         continue
@@ -208,6 +240,25 @@ def voice_command_listener():
             print(f"Error in voice recognition: {e}")
             time.sleep(1)
             continue
+
+def draw_pause_screen():
+    # Create semi-transparent overlay
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay.fill((0, 0, 0))
+    overlay.set_alpha(128)
+    screen.blit(overlay, (0, 0))
+    
+    # Draw "PAUSED" text
+    font = pygame.font.Font(None, 74)
+    text = font.render("PAUSED", True, WHITE)
+    text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    screen.blit(text, text_rect)
+    
+    # Draw instruction text
+    font_small = pygame.font.Font(None, 36)
+    instruction = font_small.render("Say 'Resume' to continue", True, WHITE)
+    instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
+    screen.blit(instruction, instruction_rect)
 
 def main():
     # Start voice command thread
@@ -244,33 +295,48 @@ def main():
                         pacman.direction = [-1, 0]
                     elif event.key == pygame.K_RIGHT:
                         pacman.direction = [1, 0]
-                    elif event.key == pygame.K_ESCAPE:
-                        running = False
-                elif event.key == pygame.K_RETURN:
+                    elif event.key == pygame.K_p:
+                        game_state = GameState.PAUSED
+                elif game_state == GameState.MENU and event.key == pygame.K_RETURN:
                     game_state = GameState.PLAYING
+                elif game_state == GameState.PAUSED and event.key == pygame.K_p:
+                    game_state = GameState.PLAYING
+                
+                if event.key == pygame.K_ESCAPE:
+                    running = False
         
+        # Handle voice commands
         if not command_queue.empty():
-            command = command_queue.get()
-            if command == "QUIT":
+            command_type, command_data = command_queue.get()
+            if command_type == "QUIT":
                 running = False
-            elif command == "START" and game_state == GameState.MENU:
-                game_state = GameState.PLAYING
-            elif isinstance(command, list) and game_state == GameState.PLAYING:
-                pacman.direction = command
+            elif command_type == "STATE":
+                game_state = command_data
+            elif command_type == "MOVE" and game_state == GameState.PLAYING:
+                pacman.direction = command_data
         
+        # Update game state
         screen.fill(BLACK)
         
         if game_state == GameState.MENU:
             draw_start_screen()
-        else:
+        elif game_state == GameState.PLAYING:
             pacman.move()
             draw_maze()
             pacman.draw()
+            
+            # Draw score
             font = pygame.font.Font(None, 36)
             score_text = f"Score: {pacman.score}"
             text_surface = font.render(score_text, True, WHITE)
             screen.blit(text_surface, (10, 10))
-        
+        elif game_state == GameState.PAUSED:
+            # Draw the game state in background
+            draw_maze()
+            pacman.draw()
+            # Overlay pause screen
+            draw_pause_screen()
+
         pygame.display.flip()
         clock.tick(30)
     
