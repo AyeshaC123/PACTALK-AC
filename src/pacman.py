@@ -1,18 +1,18 @@
-
 import pygame
 import speech_recognition as sr
 import threading
 import time
 from queue import Queue
 import math
+from enum import Enum
 
 # Initialize Pygame
 pygame.init()
 
 # Constants 
-CELL_SIZE = 30 # pixels
-GRID_WIDTH = 19 # number of cells horizontally
-GRID_HEIGHT = 21 # number of cells vertically
+CELL_SIZE = 30
+GRID_WIDTH = 19
+GRID_HEIGHT = 21
 SCREEN_WIDTH = GRID_WIDTH * CELL_SIZE
 SCREEN_HEIGHT = GRID_HEIGHT * CELL_SIZE
 
@@ -29,11 +29,12 @@ pygame.display.set_caption("Voice-Controlled Pac-Man")
 # Command queue for voice inputs
 command_queue = Queue()
 
+# Game States
+class GameState(Enum):
+    MENU = 1
+    PLAYING = 2
+
 # Maze layout
-# 0 = empty path with dot
-# 1 = wall
-# 2 = empty path without dot
-# 3 = power pellet
 MAZE = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
@@ -72,16 +73,14 @@ class PacMan:
         new_x = self.x + self.direction[0]
         new_y = self.y + self.direction[1]
         
-        # Check if the new position is within bounds and not a wall
         if (0 <= new_x < GRID_WIDTH and 
             0 <= new_y < GRID_HEIGHT and 
             MAZE[new_y][new_x] != 1):
             
-            # Collect dot
             if MAZE[new_y][new_x] == 0:
-                MAZE[new_y][new_x] = 2  # Remove dot
+                MAZE[new_y][new_x] = 2
                 self.score += 10
-            elif MAZE[new_y][new_x] == 3:  # Power pellet
+            elif MAZE[new_y][new_x] == 3:
                 MAZE[new_y][new_x] = 2
                 self.score += 50
             
@@ -89,32 +88,27 @@ class PacMan:
             self.y = new_y
     
     def draw(self):
-        # Animate mouth
         self.mouth_angle += self.mouth_change
         if self.mouth_angle >= 45 or self.mouth_angle <= 0:
             self.mouth_change = -self.mouth_change
         
-        # Calculate center position
         center = (self.x * CELL_SIZE + CELL_SIZE // 2, 
                  self.y * CELL_SIZE + CELL_SIZE // 2)
         
-        # Draw Pac-Man body
         start_angle = self.mouth_angle
         end_angle = 360 - self.mouth_angle
         
-        # Rotate based on direction
-        if self.direction[0] == 1:  # Right
+        if self.direction[0] == 1:
             rotation = 0
-        elif self.direction[0] == -1:  # Left
+        elif self.direction[0] == -1:
             rotation = 180
-        elif self.direction[1] == -1:  # Up
+        elif self.direction[1] == -1:
             rotation = 90
-        elif self.direction[1] == 1:  # Down
+        elif self.direction[1] == 1:
             rotation = 270
         else:
             rotation = 0
         
-        # Draw pac-man
         pygame.draw.arc(screen, YELLOW,
                        (center[0] - self.radius, 
                         center[1] - self.radius,
@@ -124,60 +118,96 @@ class PacMan:
                        math.radians(rotation + end_angle),
                        self.radius)
 
-# iterates over the maze array to draw walls, dots, and power pellets at corresponding positions
 def draw_maze():
     for y in range(GRID_HEIGHT):
         for x in range(GRID_WIDTH):
             cell = MAZE[y][x]
-            rect = pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE) # calculates the coordinate to place the square 
+            rect = pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
             
-            if cell == 1:  # Wall
+            if cell == 1:
                 pygame.draw.rect(screen, BLUE, rect)
-            elif cell == 0:  # Dot
+            elif cell == 0:
                 pygame.draw.circle(screen, WHITE,
                                  (x * CELL_SIZE + CELL_SIZE // 2,
-                                  y * CELL_SIZE + CELL_SIZE // 2), 3) # radius 3 for smaller dot
-            elif cell == 3:  # Power pellet
+                                  y * CELL_SIZE + CELL_SIZE // 2), 3)
+            elif cell == 3:
                 pygame.draw.circle(screen, WHITE,
                                  (x * CELL_SIZE + CELL_SIZE // 2,
-                                  y * CELL_SIZE + CELL_SIZE // 2), 8) # radius 8 for bigger circle for pellet
+                                  y * CELL_SIZE + CELL_SIZE // 2), 8)
+
+def draw_start_screen():
+    title_font = pygame.font.Font(None, 53)
+    instruction_font = pygame.font.Font(None, 36)
+    
+    # Draw title
+    title_text = "Voice-Controlled Pac-Man"
+    title_surface = title_font.render(title_text, True, YELLOW)
+    title_rect = title_surface.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//4))
+    screen.blit(title_surface, title_rect)
+    
+    # Draw instructions
+    instructions = [
+        "Voice Commands:",
+        '"Start" - Begin game',
+        '"Move up/down/left/right" - Control Pacman',
+        '"Stop" or "Quit" - Exit game',
+        "",
+        "Press Enter or say 'Start' to begin"
+    ]
+    
+    for i, line in enumerate(instructions):
+        text_surface = instruction_font.render(line, True, WHITE)
+        text_rect = text_surface.get_rect(
+            center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + i * 40)
+        )
+        screen.blit(text_surface, text_rect)
 
 def voice_command_listener():
     recognizer = sr.Recognizer()
+    running = True
     
-    # Adjust for ambient noise
-    with sr.Microphone() as source:
-        print("Adjusting for ambient noise...")
-        recognizer.adjust_for_ambient_noise(source, duration=2)
-        print("Ready for voice commands!")
-    
-    while True:
-        with sr.Microphone() as source:
-            print("Listening for command...")
-            try:
-                audio = recognizer.listen(source, timeout=1, phrase_time_limit=2)
-                command = recognizer.recognize_google(audio).lower()
-                print(f"Recognized: {command}")
+    while running:
+        try:
+            with sr.Microphone() as source:
+                if not hasattr(voice_command_listener, 'noise_adjusted'):
+                    print("Adjusting for ambient noise...")
+                    recognizer.adjust_for_ambient_noise(source, duration=2)
+                    voice_command_listener.noise_adjusted = True
+                    print("Ready for voice commands!")
                 
-                if "move up" in command:
-                    command_queue.put([0, -1])
-                elif "move down" in command:
-                    command_queue.put([0, 1])
-                elif "move left" in command:
-                    command_queue.put([-1, 0])
-                elif "move right" in command:
-                    command_queue.put([1, 0])
-                elif "stop" in command or "quit" in command:
-                    command_queue.put("QUIT")
-                    break
-            except sr.UnknownValueError:
-                print("Could not understand audio")
-            except sr.RequestError as e:
-                print(f"Could not request results; {e}")
-            except sr.WaitTimeoutError:
-                continue
-            except Exception as e:
-                print(f"Error: {e}")
+                try:
+                    print("Listening...")
+                    audio = recognizer.listen(source, timeout=1, phrase_time_limit=2)
+                    try:
+                        command = recognizer.recognize_google(audio).lower()
+                        print(f"Recognized: {command}")
+                        
+                        if "start" in command:
+                            command_queue.put("START")
+                        elif "move up" in command:
+                            command_queue.put([0, -1])
+                        elif "move down" in command:
+                            command_queue.put([0, 1])
+                        elif "move left" in command:
+                            command_queue.put([-1, 0])
+                        elif "move right" in command:
+                            command_queue.put([1, 0])
+                        elif "stop" in command or "quit" in command:
+                            command_queue.put("QUIT")
+                            running = False
+                    except sr.UnknownValueError:
+                        continue
+                    except sr.RequestError as e:
+                        print(f"Could not request results; {e}")
+                        time.sleep(1)
+                        continue
+                except sr.WaitTimeoutError:
+                    continue
+                    
+        except Exception as e:
+            print(f"Error in voice recognition: {e}")
+            time.sleep(1)
+            continue
 
 def main():
     # Start voice command thread
@@ -187,48 +217,62 @@ def main():
     pacman = PacMan()
     clock = pygame.time.Clock()
     running = True
+    game_state = GameState.MENU
+    last_error_check = time.time()
     
     while running:
-        # Handle events and update game state
-        for event in pygame.event.get(): # game loop
+        current_time = time.time()
+        
+        # Check if voice thread is still alive
+        if current_time - last_error_check > 5:
+            if not voice_thread.is_alive():
+                print("Voice recognition thread died, restarting...")
+                voice_thread = threading.Thread(target=voice_command_listener, daemon=True)
+                voice_thread.start()
+            last_error_check = current_time
+        
+        for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    pacman.direction = [0, -1]
-                elif event.key == pygame.K_DOWN:
-                    pacman.direction = [0, 1]
-                elif event.key == pygame.K_LEFT:
-                    pacman.direction = [-1, 0]
-                elif event.key == pygame.K_RIGHT:
-                    pacman.direction = [1, 0]
-                elif event.key == pygame.K_ESCAPE:
-                    running = False
+                if game_state == GameState.PLAYING:
+                    if event.key == pygame.K_UP:
+                        pacman.direction = [0, -1]
+                    elif event.key == pygame.K_DOWN:
+                        pacman.direction = [0, 1]
+                    elif event.key == pygame.K_LEFT:
+                        pacman.direction = [-1, 0]
+                    elif event.key == pygame.K_RIGHT:
+                        pacman.direction = [1, 0]
+                    elif event.key == pygame.K_ESCAPE:
+                        running = False
+                elif event.key == pygame.K_RETURN:
+                    game_state = GameState.PLAYING
         
-        # Check for voice commands
         if not command_queue.empty():
             command = command_queue.get()
             if command == "QUIT":
                 running = False
-            else:
+            elif command == "START" and game_state == GameState.MENU:
+                game_state = GameState.PLAYING
+            elif isinstance(command, list) and game_state == GameState.PLAYING:
                 pacman.direction = command
         
-        # Update game state
-        pacman.move()
-        
-        # Draw screen with maze and pacman
         screen.fill(BLACK)
-        draw_maze()
-        pacman.draw()
         
-        # Draw score
-        font = pygame.font.Font(None, 36)
-        score_text = f"Score: {pacman.score}"
-        text_surface = font.render(score_text, True, WHITE)
-        screen.blit(text_surface, (10, 10))
-
-        pygame.display.flip() # Updates game state and redraw graphics 
-        clock.tick(30) # Run at 30 frames per second (game loop runs 30 times per sec)
+        if game_state == GameState.MENU:
+            draw_start_screen()
+        else:
+            pacman.move()
+            draw_maze()
+            pacman.draw()
+            font = pygame.font.Font(None, 36)
+            score_text = f"Score: {pacman.score}"
+            text_surface = font.render(score_text, True, WHITE)
+            screen.blit(text_surface, (10, 10))
+        
+        pygame.display.flip()
+        clock.tick(30)
     
     pygame.quit()
 
