@@ -1,4 +1,3 @@
-
 import pygame
 import speech_recognition as sr
 import threading
@@ -140,7 +139,26 @@ def draw_maze():
             elif cell == 3:  # Power pellet
                 pygame.draw.circle(screen, WHITE,
                                  (x * CELL_SIZE + CELL_SIZE // 2,
-                                  y * CELL_SIZE + CELL_SIZE // 2), 8) # radius 8 for bigger circle for pellet
+                                  y * CELL_SIZE + CELL_SIZE // 2), 8)
+
+def draw_pause_screen():
+    # Create semi-transparent overlay
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay.fill((0, 0, 0))
+    overlay.set_alpha(128)
+    screen.blit(overlay, (0, 0))
+    
+    # Draw "PAUSED" text
+    font = pygame.font.Font(None, 74)
+    text = font.render("PAUSED", True, WHITE)
+    text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    screen.blit(text, text_rect)
+    
+    # Draw instruction text
+    font_small = pygame.font.Font(None, 36)
+    instruction = font_small.render("Say 'Resume game' to continue", True, WHITE)
+    instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
+    screen.blit(instruction, instruction_rect)
 
 def voice_command_listener():
     recognizer = sr.Recognizer()
@@ -160,15 +178,19 @@ def voice_command_listener():
                 print(f"Recognized: {command}")
                 
                 if "move up" in command:
-                    command_queue.put([0, -1])
+                    command_queue.put(("MOVE", [0, -1]))
                 elif "move down" in command:
-                    command_queue.put([0, 1])
+                    command_queue.put(("MOVE", [0, 1]))
                 elif "move left" in command:
-                    command_queue.put([-1, 0])
+                    command_queue.put(("MOVE", [-1, 0]))
                 elif "move right" in command:
-                    command_queue.put([1, 0])
+                    command_queue.put(("MOVE", [1, 0]))
+                elif "pause game" in command:
+                    command_queue.put(("PAUSE", None))
+                elif "resume game" in command:
+                    command_queue.put(("RESUME", None))
                 elif "stop" in command or "quit" in command:
-                    command_queue.put("QUIT")
+                    command_queue.put(("QUIT", None))
                     break
             except sr.UnknownValueError:
                 print("Could not understand audio")
@@ -187,6 +209,7 @@ def main():
     pacman = PacMan()
     clock = pygame.time.Clock()
     running = True
+    paused = False
     
     while running:
         # Handle events and update game state
@@ -194,27 +217,35 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    pacman.direction = [0, -1]
-                elif event.key == pygame.K_DOWN:
-                    pacman.direction = [0, 1]
-                elif event.key == pygame.K_LEFT:
-                    pacman.direction = [-1, 0]
-                elif event.key == pygame.K_RIGHT:
-                    pacman.direction = [1, 0]
-                elif event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_ESCAPE:
                     running = False
+                elif event.key == pygame.K_p:  # Add keyboard pause control
+                    paused = not paused
+                elif not paused:  # Only process movement keys when not paused
+                    if event.key == pygame.K_UP:
+                        pacman.direction = [0, -1]
+                    elif event.key == pygame.K_DOWN:
+                        pacman.direction = [0, 1]
+                    elif event.key == pygame.K_LEFT:
+                        pacman.direction = [-1, 0]
+                    elif event.key == pygame.K_RIGHT:
+                        pacman.direction = [1, 0]
         
         # Check for voice commands
         if not command_queue.empty():
-            command = command_queue.get()
-            if command == "QUIT":
+            command_type, command_data = command_queue.get()
+            if command_type == "QUIT":
                 running = False
-            else:
-                pacman.direction = command
+            elif command_type == "PAUSE":
+                paused = True
+            elif command_type == "RESUME":
+                paused = False
+            elif command_type == "MOVE" and not paused:
+                pacman.direction = command_data
         
-        # Update game state
-        pacman.move()
+        # Update game state only if not paused
+        if not paused:
+            pacman.move()
         
         # Draw screen with maze and pacman
         screen.fill(BLACK)
@@ -226,10 +257,13 @@ def main():
         score_text = f"Score: {pacman.score}"
         text_surface = font.render(score_text, True, WHITE)
         screen.blit(text_surface, (10, 10))
-
-        pygame.display.flip() # Updates game state and redraw graphics 
-        clock.tick(30) # Run at 30 frames per second (game loop runs 30 times per sec)
-    
+        
+        # Draw pause screen if game is paused
+        if paused:
+            draw_pause_screen()
+        
+        pygame.display.flip() # updates game state and redraw graphics
+        clock.tick(30) # run at 30 frames per sec (game loop runs 30 times per sec)
     pygame.quit()
 
 if __name__ == "__main__":
