@@ -1,6 +1,6 @@
 import pygame
 import speech_recognition as sr
-import threading
+import threadinggit 
 import time
 from queue import Queue
 import math
