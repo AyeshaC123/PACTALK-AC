@@ -32,7 +32,7 @@ pygame.display.set_caption("Voice-Controlled Pac-Man")
 command_queue = Queue()
 mic_status_queue = Queue()
 
-# Game States - properly defined enum
+# Game States
 class GameState(Enum):
     MENU = "menu"
     PLAYING = "playing"
@@ -122,9 +122,6 @@ class PacMan:
                        math.radians(rotation + end_angle),
                        self.radius)
 
-
-
-
 def draw_maze():
     for y in range(GRID_HEIGHT):
         for x in range(GRID_WIDTH):
@@ -142,44 +139,46 @@ def draw_maze():
                                  (x * CELL_SIZE + CELL_SIZE // 2,
                                   y * CELL_SIZE + CELL_SIZE // 2), 8)
 
-
 def draw_pause_screen():
-    # Create semi-transparent overlay
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     overlay.fill((0, 0, 0))
     overlay.set_alpha(128)
     screen.blit(overlay, (0, 0))
     
-    # Draw "PAUSED" text
     font = pygame.font.Font(None, 74)
     text = font.render("PAUSED", True, WHITE)
     text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
     screen.blit(text, text_rect)
     
-    # Draw instruction text
     font_small = pygame.font.Font(None, 36)
     instruction = font_small.render("Say 'Resume' to continue", True, WHITE)
     instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
     screen.blit(instruction, instruction_rect)
+
 def draw_microphone_indicator(is_listening):
-    # Define microphone icon dimensions and position
     mic_size = 30
     mic_x = 20
     mic_y = SCREEN_HEIGHT - 35
     
-    # Draw microphone base (circle)
+    # Draw background circle
     color = GREEN if is_listening else RED
-    pygame.draw.circle(screen, color, (mic_x, mic_y), 10)
+    pygame.draw.circle(screen, color, (mic_x, mic_y), 15)
     
-    # Draw microphone stem
-    pygame.draw.rect(screen, color, 
-                    (mic_x - 3, mic_y - 12, 6, 15))
+    # Draw microphone icon in white
+    # Main body of microphone
+    pygame.draw.rect(screen, WHITE, (mic_x - 3, mic_y - 8, 6, 12), border_radius=3)
+    pygame.draw.rect(screen, WHITE, (mic_x - 6, mic_y - 8, 12, 3), border_radius=1)
     
-    # Draw microphone top
-    pygame.draw.rect(screen, color,
-                    (mic_x - 8, mic_y - 12, 16, 4))
+    # Base stand
+    if is_listening:
+        # Draw "sound waves" when active
+        for i in range(1, 4):
+            pygame.draw.arc(screen, WHITE,
+                          (mic_x - 8 - i*4, mic_y - 8 - i*4, 
+                           16 + i*8, 16 + i*8),
+                          math.radians(-45), math.radians(225), 1)
     
-    # Add status text
+    # Status text
     font = pygame.font.Font(None, 24)
     status_text = "Listening..." if is_listening else "Idle"
     text_surface = font.render(status_text, True, WHITE)
@@ -190,13 +189,11 @@ def draw_start_screen():
     title_font = pygame.font.Font(None, 53)
     instruction_font = pygame.font.Font(None, 36)
     
-    # Draw title
     title_text = "Voice-Controlled Pac-Man"
     title_surface = title_font.render(title_text, True, YELLOW)
     title_rect = title_surface.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//4))
     screen.blit(title_surface, title_rect)
     
-    # Draw instructions
     instructions = [
         "Voice Commands:",
         '"Start" - Begin game',
@@ -215,52 +212,10 @@ def draw_start_screen():
         )
         screen.blit(text_surface, text_rect)
 
-
 def voice_command_listener():
     recognizer = sr.Recognizer()
     running = True
     
-<<<<<<< HEAD
-    with sr.Microphone() as source:
-        print("Adjusting for ambient noise...")
-        recognizer.adjust_for_ambient_noise(source, duration=2)
-        print("Ready for voice commands!")
-    
-    while True:
-        with sr.Microphone() as source:
-            print("Listening for command...")
-            mic_status_queue.put(True)  # Signal that microphone is listening
-            try:
-                audio = recognizer.listen(source, timeout=1, phrase_time_limit=2)
-                command = recognizer.recognize_google(audio).lower()
-                print(f"Recognized: {command}")
-                
-                if "move up" in command:
-                    command_queue.put(("MOVE", [0, -1]))
-                elif "move down" in command:
-                    command_queue.put(("MOVE", [0, 1]))
-                elif "move left" in command:
-                    command_queue.put(("MOVE", [-1, 0]))
-                elif "move right" in command:
-                    command_queue.put(("MOVE", [1, 0]))
-                elif "pause" in command:
-                    command_queue.put(("PAUSE", None))
-                elif "resume game" in command:
-                    command_queue.put(("RESUME", None))
-                elif "stop" in command or "quit" in command:
-                    command_queue.put(("QUIT", None))
-                    break
-            except sr.UnknownValueError:
-                print("Could not understand audio")
-            except sr.RequestError as e:
-                print(f"Could not request results; {e}")
-            except sr.WaitTimeoutError:
-                pass
-            except Exception as e:
-                print(f"Error: {e}")
-            finally:
-                mic_status_queue.put(False)  # Signal that microphone is not listening
-=======
     while running:
         try:
             with sr.Microphone() as source:
@@ -270,63 +225,40 @@ def voice_command_listener():
                     voice_command_listener.noise_adjusted = True
                     print("Ready for voice commands!")
                 
+                print("Listening...")
+                mic_status_queue.put(True)  # Signal that microphone is listening
+                
                 try:
-                    print("Listening...")
                     audio = recognizer.listen(source, timeout=1, phrase_time_limit=2)
-                    try:
-                        command = recognizer.recognize_google(audio).lower()
-                        print(f"Recognized: {command}")
+                    command = recognizer.recognize_google(audio).lower()
+                    print(f"Recognized: {command}")
+                    
+                    if "start" in command:
+                        command_queue.put(("STATE", GameState.PLAYING))
+                    elif "pause" in command:
+                        command_queue.put(("STATE", GameState.PAUSED))
+                    elif "resume" in command:
+                        command_queue.put(("STATE", GameState.PLAYING))
+                    elif "up" in command:
+                        command_queue.put(("MOVE", [0, -1]))
+                    elif "down" in command:
+                        command_queue.put(("MOVE", [0, 1]))
+                    elif "left" in command:
+                        command_queue.put(("MOVE", [-1, 0]))
+                    elif "right" in command:
+                        command_queue.put(("MOVE", [1, 0]))
+                    elif "stop" in command or "quit" in command:
+                        command_queue.put(("QUIT", None))
+                        running = False
                         
-                        if "start" in command:
-                            command_queue.put(("STATE", GameState.PLAYING))
-                        elif "pause" in command:
-                            command_queue.put(("STATE", GameState.PAUSED))
-                        elif "resume" in command:
-                            command_queue.put(("STATE", GameState.PLAYING))
-                        elif "move up" in command:
-                            command_queue.put(("MOVE", [0, -1]))
-                        elif "move down" in command:
-                            command_queue.put(("MOVE", [0, 1]))
-                        elif "move left" in command:
-                            command_queue.put(("MOVE", [-1, 0]))
-                        elif "move right" in command:
-                            command_queue.put(("MOVE", [1, 0]))
-                        elif "stop" in command or "quit" in command:
-                            command_queue.put(("QUIT", None))
-                            running = False
-                    except sr.UnknownValueError:
-                        continue
-                    except sr.RequestError as e:
-                        print(f"Could not request results; {e}")
-                        time.sleep(1)
-                        continue
-                except sr.WaitTimeoutError:
-                    continue
+                except (sr.UnknownValueError, sr.RequestError, sr.WaitTimeoutError):
+                    pass
                     
         except Exception as e:
             print(f"Error in voice recognition: {e}")
             time.sleep(1)
-            continue
-
-def draw_pause_screen():
-    # Create semi-transparent overlay
-    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-    overlay.fill((0, 0, 0))
-    overlay.set_alpha(128)
-    screen.blit(overlay, (0, 0))
-    
-    # Draw "PAUSED" text
-    font = pygame.font.Font(None, 74)
-    text = font.render("PAUSED", True, WHITE)
-    text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-    screen.blit(text, text_rect)
-    
-    # Draw instruction text
-    font_small = pygame.font.Font(None, 36)
-    instruction = font_small.render("Say 'Resume' to continue", True, WHITE)
-    instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
-    screen.blit(instruction, instruction_rect)
->>>>>>> eb237d8c6c278e5449fa255e76946e62fb9e1186
+        finally:
+            mic_status_queue.put(False)  # Signal that microphone is not listening
 
 def main():
     voice_thread = threading.Thread(target=voice_command_listener, daemon=True)
@@ -335,14 +267,8 @@ def main():
     pacman = PacMan()
     clock = pygame.time.Clock()
     running = True
-<<<<<<< HEAD
-    paused = False
-    is_listening = False
-    
-    while running:
-        # Handle events and update game state
-=======
     game_state = GameState.MENU
+    is_listening = False
     last_error_check = time.time()
     
     while running:
@@ -356,20 +282,16 @@ def main():
                 voice_thread.start()
             last_error_check = current_time
         
->>>>>>> eb237d8c6c278e5449fa255e76946e62fb9e1186
+        # Handle events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-<<<<<<< HEAD
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                elif event.key == pygame.K_p:
-                    paused = not paused
-                elif not paused:
-=======
-                if game_state == GameState.PLAYING:
->>>>>>> eb237d8c6c278e5449fa255e76946e62fb9e1186
+                elif game_state == GameState.MENU and event.key == pygame.K_RETURN:
+                    game_state = GameState.PLAYING
+                elif game_state == GameState.PLAYING:
                     if event.key == pygame.K_UP:
                         pacman.direction = [0, -1]
                     elif event.key == pygame.K_DOWN:
@@ -380,13 +302,8 @@ def main():
                         pacman.direction = [1, 0]
                     elif event.key == pygame.K_p:
                         game_state = GameState.PAUSED
-                elif game_state == GameState.MENU and event.key == pygame.K_RETURN:
-                    game_state = GameState.PLAYING
                 elif game_state == GameState.PAUSED and event.key == pygame.K_p:
                     game_state = GameState.PLAYING
-                
-                if event.key == pygame.K_ESCAPE:
-                    running = False
         
         # Handle voice commands
         if not command_queue.empty():
@@ -398,36 +315,13 @@ def main():
             elif command_type == "MOVE" and game_state == GameState.PLAYING:
                 pacman.direction = command_data
         
-<<<<<<< HEAD
         # Check for microphone status updates
         while not mic_status_queue.empty():
             is_listening = mic_status_queue.get()
         
-        # Update game state only if not paused
-        if not paused:
-            pacman.move()
-        
         # Draw screen
-=======
-        # Update game state
->>>>>>> eb237d8c6c278e5449fa255e76946e62fb9e1186
         screen.fill(BLACK)
         
-<<<<<<< HEAD
-        # Draw score
-        font = pygame.font.Font(None, 36)
-        score_text = f"Score: {pacman.score}"
-        text_surface = font.render(score_text, True, WHITE)
-        screen.blit(text_surface, (10, 10))
-        
-        # Draw microphone indicator
-        draw_microphone_indicator(is_listening)
-        
-        # Draw pause screen if game is paused
-        if paused:
-            draw_pause_screen()
-        
-=======
         if game_state == GameState.MENU:
             draw_start_screen()
         elif game_state == GameState.PLAYING:
@@ -446,8 +340,8 @@ def main():
             pacman.draw()
             # Overlay pause screen
             draw_pause_screen()
+        draw_microphone_indicator(is_listening)
 
->>>>>>> eb237d8c6c278e5449fa255e76946e62fb9e1186
         pygame.display.flip()
         clock.tick(30)
     
