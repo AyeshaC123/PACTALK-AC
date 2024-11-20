@@ -91,6 +91,32 @@ class PacMan:
             self.x = new_x
             self.y = new_y
     
+
+    def move_multiple(self, direction, steps):
+        remaining_steps = steps
+        while remaining_steps > 0:
+            new_x = self.x + direction[0]
+            new_y = self.y + direction[1]
+            
+            # Check if we hit a wall
+            if (not 0 <= new_x < GRID_WIDTH or 
+                not 0 <= new_y < GRID_HEIGHT or 
+                MAZE[new_y][new_x] == 1):
+                break
+                
+            # Move and collect points
+            if MAZE[new_y][new_x] == 0:
+                MAZE[new_y][new_x] = 2
+                self.score += 10
+            elif MAZE[new_y][new_x] == 3:
+                MAZE[new_y][new_x] = 2
+                self.score += 50
+            
+            self.x = new_x
+            self.y = new_y
+            remaining_steps -= 1
+        self.direction = [0, 0]  # Reset direction after movement
+
     def draw(self):
         self.mouth_angle += self.mouth_change
         if self.mouth_angle >= 45 or self.mouth_angle <= 0:
@@ -212,6 +238,17 @@ def draw_start_screen():
         )
         screen.blit(text_surface, text_rect)
 
+def word_to_number(word):
+    """Convert word numbers to integers"""
+    number_dict = {
+        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
+        'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
+        'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
+        'fourteen': 14, 'fifteen': 15, 'sixteen': 16,
+        'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20
+    }
+    return number_dict.get(word.lower(), None)
+
 def voice_command_listener():
     recognizer = sr.Recognizer()
     running = True
@@ -233,23 +270,49 @@ def voice_command_listener():
                     command = recognizer.recognize_google(audio).lower()
                     print(f"Recognized: {command}")
                     
+                    # Split command into words
+                    words = command.split()
+
                     if "start" in command:
                         command_queue.put(("STATE", GameState.PLAYING))
                     elif "pause" in command:
                         command_queue.put(("STATE", GameState.PAUSED))
                     elif "resume" in command:
                         command_queue.put(("STATE", GameState.PLAYING))
-                    elif "up" in command:
-                        command_queue.put(("MOVE", [0, -1]))
-                    elif "down" in command:
-                        command_queue.put(("MOVE", [0, 1]))
-                    elif "left" in command:
-                        command_queue.put(("MOVE", [-1, 0]))
-                    elif "right" in command:
-                        command_queue.put(("MOVE", [1, 0]))
                     elif "stop" in command or "quit" in command:
                         command_queue.put(("QUIT", None))
                         running = False
+                    # Handle movement commands with steps
+                    elif any(direction in words for direction in ["up", "down", "left", "right"]):
+                        # Get direction
+                        if "up" in words:
+                            direction = [0, -1]
+                        elif "down" in words:
+                            direction = [0, 1]
+                        elif "left" in words:
+                            direction = [-1, 0]
+                        else:  # right
+                            direction = [1, 0]
+                        
+                        # Look for number in words (either digit or word form)
+                        steps = 1  # default to 1 if no number given
+                        for word in words:
+                            # Check if it's a digit
+                            if word.isdigit():
+                                steps = int(word)
+                                break
+                            # Check if it's a word number
+                            number = word_to_number(word)
+                            if number is not None:
+                                steps = number
+                                break
+                        
+                        print(f"Moving {steps} steps in direction {direction}")  # Debug print
+                        
+                        if steps == 1:
+                            command_queue.put(("MOVE", direction))  # Use old movement for single steps
+                        else:
+                            command_queue.put(("MOVE_MULTIPLE", (direction, steps)))
                         
                 except (sr.UnknownValueError, sr.RequestError, sr.WaitTimeoutError):
                     pass
@@ -314,7 +377,14 @@ def main():
                 game_state = command_data
             elif command_type == "MOVE" and game_state == GameState.PLAYING:
                 pacman.direction = command_data
+            elif command_type == "MOVE_MULTIPLE" and game_state == GameState.PLAYING:
+                direction, steps = command_data
+                pacman.move_multiple(direction, steps)
         
+        # Update game state
+        if game_state == GameState.PLAYING:
+            pacman.move()  # Keep the continuous movement
+
         # Check for microphone status updates
         while not mic_status_queue.empty():
             is_listening = mic_status_queue.get()
