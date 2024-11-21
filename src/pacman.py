@@ -337,7 +337,7 @@ def draw_start_screen():
 def word_to_number(word):
     """Convert word numbers to integers"""
     number_dict = {
-        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
+        'zero': 0, 'one': 1, 'two': 2, 'to': 2, 'three': 3, 'four': 4,
         'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
         'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
         'fourteen': 14, 'fifteen': 15, 'sixteen': 16,
@@ -379,7 +379,7 @@ def voice_command_listener():
                         command_queue.put(("QUIT", None))
                         running = False
                     # Handle movement commands with steps
-                    elif any(direction in words for direction in ["up", "down", "left", "right"]):
+                    elif any(direction in words for direction in ["up", "down", "left", "right", "write"]):
                         # Get direction
                         if "up" in words:
                             direction = [0, -1]
