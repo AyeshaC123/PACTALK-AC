@@ -187,6 +187,31 @@ class PacMan:
             # Deduct one step's worth from the accumulator
             self.step_accumulator -= 1
 
+    def move_multiple(self, direction, steps):
+        remaining_steps = steps
+        while remaining_steps > 0:
+            new_x = self.x + direction[0]
+            new_y = self.y + direction[1]
+
+            # Check if we hit a wall
+            if (not 0 <= new_x < GRID_WIDTH or 
+                not 0 <= new_y < GRID_HEIGHT or 
+                MAZE[new_y][new_x] == 1):
+                break
+
+            # Move and collect points
+            if MAZE[new_y][new_x] == 0:
+                MAZE[new_y][new_x] = 2
+                self.score += 10
+            elif MAZE[new_y][new_x] == 3:
+                MAZE[new_y][new_x] = 2
+                self.score += 50
+
+            self.x = new_x
+            self.y = new_y
+            remaining_steps -= 1
+        self.direction = [0, 0]  # Reset direction after movement`
+
     def draw(self):
         self.mouth_angle += self.mouth_change
         if self.mouth_angle >= 45 or self.mouth_angle <= 0:
