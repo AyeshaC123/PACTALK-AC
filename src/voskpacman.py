@@ -5,9 +5,22 @@ import time
 from queue import Queue
 import math
 from enum import Enum
+from vosk import Model, KaldiRecognizer
+import pyaudio
+import json
+import threading
+from queue import Queue
 
 import os
 print("Current working directory:", os.getcwd())
+
+from vosk import Model
+model = Model(lang="en-us")  # Loads a pre-downloaded compact model
+
+
+# # Load the Vosk model (ensure the correct path to the model directory)
+# vosk_model_path = "path/to/vosk/model"
+# vosk_model = Model(vosk_model_path)
 
 # Initialize Pygame
 pygame.init()
@@ -346,29 +359,26 @@ def word_to_number(word):
     return number_dict.get(word.lower(), None)
 
 def voice_command_listener():
-    recognizer = sr.Recognizer()
-    running = True
-    
-    while running:
-        try:
-            with sr.Microphone() as source:
-                if not hasattr(voice_command_listener, 'noise_adjusted'):
-                    print("Adjusting for ambient noise...")
-                    recognizer.adjust_for_ambient_noise(source, duration=2)
-                    voice_command_listener.noise_adjusted = True
-                    print("Ready for voice commands!")
-                
-                print("Listening...")
-                mic_status_queue.put(True)  # Signal that microphone is listening
-                
-                try:
-                    audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
-                    command = recognizer.recognize_google(audio).lower()
+    recognizer = KaldiRecognizer(model, 16000)
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
+    stream.start_stream()
+
+    print("Vosk Voice Command Listener is active...")
+    mic_status_queue.put(True)  # Indicate that the microphone is active
+
+    try:
+        while True:
+            data = stream.read(4000, exception_on_overflow=False)
+            if recognizer.AcceptWaveform(data):
+                result = json.loads(recognizer.Result())
+                if "text" in result:
+                    command = result["text"]
                     print(f"Recognized: {command}")
-                    
                     # Split command into words
                     words = command.split()
-
+                    
+                    # Parse commands
                     if "start" in command:
                         command_queue.put(("STATE", GameState.PLAYING))
                     elif "pause" in command:
@@ -408,16 +418,12 @@ def voice_command_listener():
                         if steps == 1:
                             command_queue.put(("MOVE", direction))  # Use old movement for single steps
                         else:
-                            command_queue.put(("MOVE_MULTIPLE", (direction, steps)))
-                        
-                except (sr.UnknownValueError, sr.RequestError, sr.WaitTimeoutError):
-                    pass
-                    
-        except Exception as e:
-            print(f"Error in voice recognition: {e}")
-            time.sleep(1)
-        finally:
-            mic_status_queue.put(False)  # Signal that microphone is not listening
+                            command_queue.put(("MOVE_MULTIPLE", (direction, steps)))               
+    finally:
+        mic_status_queue.put(False)  # Indicate that the microphone is no longer active
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
 
 def main():
     voice_thread = threading.Thread(target=voice_command_listener, daemon=True)
