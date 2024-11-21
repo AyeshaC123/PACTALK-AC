@@ -183,7 +183,7 @@ class PacMan:
 
                 self.x = new_x
                 self.y = new_y
-                
+
             # Deduct one step's worth from the accumulator
             self.step_accumulator -= 1
 
@@ -478,7 +478,14 @@ def main():
             blinky.draw()  # Draw Blinky
             if blinky.x_pos // CELL_SIZE == pacman.x and blinky.y_pos // CELL_SIZE == pacman.y:
                 print("Pac-Man was caught by Blinky!")
-                # Handle collision (e.g., reset Pac-Man position or decrease life)
+                font = pygame.font.Font(None, 74)
+                text = font.render("GAME OVER", True, RED)
+                text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+                screen.blit(text, text_rect)
+                pygame.display.flip()
+                pygame.time.wait(3000)  # Wait 3 seconds to display the message
+                running = False  # End the game loop
+
 
             pacman.draw()
             
