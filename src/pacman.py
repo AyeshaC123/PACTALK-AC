@@ -6,6 +6,9 @@ from queue import Queue
 import math
 from enum import Enum
 
+import os
+print("Current working directory:", os.getcwd())
+
 # Initialize Pygame
 pygame.init()
 
@@ -63,6 +66,89 @@ MAZE = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ]
 
+import random
+
+# Add this to define Blinky's image and scale it
+blinky_img = pygame.transform.scale(pygame.image.load('assets/ghost_images/red.png'), (CELL_SIZE, CELL_SIZE))
+
+
+class Ghost:
+    def __init__(self, x, y, image_path, target=None):
+        self.x_pos = x * CELL_SIZE  # Pixel position
+        self.y_pos = y * CELL_SIZE  # Pixel position
+        self.image = pygame.image.load(image_path)
+        self.image = pygame.transform.scale(self.image, (CELL_SIZE, CELL_SIZE))
+        self.direction = 0  # Initial direction: 0=right, 1=left, 2=up, 3=down
+        self.speed = 2  # Match Pac-Man's speed
+        self.turns = [False, False, False, False]  # Right, Left, Up, Down
+        self.target = target  # Target coordinates (e.g., Pac-Man)
+
+    def calculate_turns(self):
+        # Determine valid moves based on the maze layout
+        grid_x = self.x_pos // CELL_SIZE
+        grid_y = self.y_pos // CELL_SIZE
+        self.turns = [False, False, False, False]  # Reset
+
+        if MAZE[grid_y][grid_x + 1] != 1:  # Right
+            self.turns[0] = True
+        if MAZE[grid_y][grid_x - 1] != 1:  # Left
+            self.turns[1] = True
+        if MAZE[grid_y - 1][grid_x] != 1:  # Up
+            self.turns[2] = True
+        if MAZE[grid_y + 1][grid_x] != 1:  # Down
+            self.turns[3] = True
+
+    def move_blinky(self):
+        # Only allow direction changes when aligned with the grid
+        if self.x_pos % CELL_SIZE == 0 and self.y_pos % CELL_SIZE == 0:
+            # Update current grid position
+            grid_x = self.x_pos // CELL_SIZE
+            grid_y = self.y_pos // CELL_SIZE
+
+            # Compute target grid position for Pac-Man
+            target_x = self.target[0]
+            target_y = self.target[1]
+
+            # Recalculate valid turns
+            self.calculate_turns()
+
+            # List possible moves and their distances to Pac-Man
+            moves = []
+            if self.turns[0]:  # Right
+                moves.append(((grid_x + 1, grid_y), (target_x - (grid_x + 1))**2 + (target_y - grid_y)**2, 0))
+            if self.turns[1]:  # Left
+                moves.append(((grid_x - 1, grid_y), (target_x - (grid_x - 1))**2 + (target_y - grid_y)**2, 1))
+            if self.turns[2]:  # Up
+                moves.append(((grid_x, grid_y - 1), (target_x - grid_x)**2 + (target_y - (grid_y - 1))**2, 2))
+            if self.turns[3]:  # Down
+                moves.append(((grid_x, grid_y + 1), (target_x - grid_x)**2 + (target_y - (grid_y + 1))**2, 3))
+
+            # Choose the move with the smallest distance to Pac-Man
+            if moves:
+                best_move = min(moves, key=lambda x: x[1])  # Sort by distance
+                self.direction = best_move[2]  # Update direction
+
+        # Move in the chosen direction
+        if self.direction == 0:  # Right
+            self.x_pos += self.speed
+        elif self.direction == 1:  # Left
+            self.x_pos -= self.speed
+        elif self.direction == 2:  # Up
+            self.y_pos -= self.speed
+        elif self.direction == 3:  # Down
+            self.y_pos += self.speed
+
+        # Handle wrapping at boundaries
+        if self.x_pos < 0:
+            self.x_pos = SCREEN_WIDTH - CELL_SIZE
+        elif self.x_pos >= SCREEN_WIDTH:
+            self.x_pos = 0
+
+    def draw(self):
+        screen.blit(self.image, (self.x_pos, self.y_pos))
+ 
+
+
 class PacMan:
     def __init__(self):
         self.x = 9
@@ -72,62 +158,46 @@ class PacMan:
         self.mouth_angle = 0
         self.mouth_change = 5
         self.score = 0
-        
-    def move(self):
-        new_x = self.x + self.direction[0]
-        new_y = self.y + self.direction[1]
-        
-        if (0 <= new_x < GRID_WIDTH and 
-            0 <= new_y < GRID_HEIGHT and 
-            MAZE[new_y][new_x] != 1):
-            
-            if MAZE[new_y][new_x] == 0:
-                MAZE[new_y][new_x] = 2
-                self.score += 10
-            elif MAZE[new_y][new_x] == 3:
-                MAZE[new_y][new_x] = 2
-                self.score += 50
-            
-            self.x = new_x
-            self.y = new_y
-    
+        self.speed = 2  # Matches ghost speed
+        self.step_accumulator = 0  # Tracks fractional steps
 
-    def move_multiple(self, direction, steps):
-        remaining_steps = steps
-        while remaining_steps > 0:
-            new_x = self.x + direction[0]
-            new_y = self.y + direction[1]
-            
-            # Check if we hit a wall
-            if (not 0 <= new_x < GRID_WIDTH or 
-                not 0 <= new_y < GRID_HEIGHT or 
-                MAZE[new_y][new_x] == 1):
-                break
+    def move(self):
+        # Accumulate steps based on speed
+        self.step_accumulator += self.speed
+
+        # Only move when full step is accumulated
+        if self.step_accumulator >= 1:
+            new_x = self.x + self.direction[0]
+            new_y = self.y + self.direction[1]
+
+            if (0 <= new_x < GRID_WIDTH and
+                0 <= new_y < GRID_HEIGHT and
+                MAZE[new_y][new_x] != 1):
+
+                if MAZE[new_y][new_x] == 0:
+                    MAZE[new_y][new_x] = 2
+                    self.score += 10
+                elif MAZE[new_y][new_x] == 3:
+                    MAZE[new_y][new_x] = 2
+                    self.score += 50
+
+                self.x = new_x
+                self.y = new_y
                 
-            # Move and collect points
-            if MAZE[new_y][new_x] == 0:
-                MAZE[new_y][new_x] = 2
-                self.score += 10
-            elif MAZE[new_y][new_x] == 3:
-                MAZE[new_y][new_x] = 2
-                self.score += 50
-            
-            self.x = new_x
-            self.y = new_y
-            remaining_steps -= 1
-        self.direction = [0, 0]  # Reset direction after movement
+            # Deduct one step's worth from the accumulator
+            self.step_accumulator -= 1
 
     def draw(self):
         self.mouth_angle += self.mouth_change
         if self.mouth_angle >= 45 or self.mouth_angle <= 0:
             self.mouth_change = -self.mouth_change
-        
-        center = (self.x * CELL_SIZE + CELL_SIZE // 2, 
+
+        center = (self.x * CELL_SIZE + CELL_SIZE // 2,
                  self.y * CELL_SIZE + CELL_SIZE // 2)
-        
+
         start_angle = self.mouth_angle
         end_angle = 360 - self.mouth_angle
-        
+
         if self.direction[0] == 1:
             rotation = 0
         elif self.direction[0] == -1:
@@ -138,15 +208,16 @@ class PacMan:
             rotation = 270
         else:
             rotation = 0
-        
+
         pygame.draw.arc(screen, YELLOW,
-                       (center[0] - self.radius, 
+                       (center[0] - self.radius,
                         center[1] - self.radius,
-                        self.radius * 2, 
+                        self.radius * 2,
                         self.radius * 2),
                        math.radians(rotation + start_angle),
                        math.radians(rotation + end_angle),
                        self.radius)
+
 
 def draw_maze():
     for y in range(GRID_HEIGHT):
@@ -333,7 +404,9 @@ def main():
     game_state = GameState.MENU
     is_listening = False
     last_error_check = time.time()
-    
+
+    blinky = Ghost(9, 7, "assets/ghost_images/red.png", target=[pacman.x, pacman.y])
+
     while running:
         current_time = time.time()
         
@@ -397,6 +470,16 @@ def main():
         elif game_state == GameState.PLAYING:
             pacman.move()
             draw_maze()
+
+            # Update and draw ghosts
+            # Update and draw Blinky
+            blinky.target = [pacman.x, pacman.y]  # Update target to Pac-Man's position
+            blinky.move_blinky()  # Move Blinky
+            blinky.draw()  # Draw Blinky
+            if blinky.x_pos // CELL_SIZE == pacman.x and blinky.y_pos // CELL_SIZE == pacman.y:
+                print("Pac-Man was caught by Blinky!")
+                # Handle collision (e.g., reset Pac-Man position or decrease life)
+
             pacman.draw()
             
             # Draw score
