@@ -275,16 +275,17 @@ def draw_maze():
                                   y * CELL_SIZE + CELL_SIZE // 2), 8)
 
 def draw_pause_screen():
+    # creates a semi-transparent overlay
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     overlay.fill((0, 0, 0))
     overlay.set_alpha(128)
     screen.blit(overlay, (0, 0))
-    
+    # renders the PAUSED text
     font = pygame.font.Font(None, 74)
     text = font.render("PAUSED", True, WHITE)
-    text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-    screen.blit(text, text_rect)
-    
+    text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)) # calculates the spot on screen
+    screen.blit(text, text_rect) # draws it there
+    #  renders the instruction text
     font_small = pygame.font.Font(None, 36)
     instruction = font_small.render("Say 'Resume' to continue", True, WHITE)
     instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
@@ -296,13 +297,12 @@ def draw_microphone_indicator(is_listening):
     mic_y = SCREEN_HEIGHT - 35
     
     # Draw background circle
-    color = GREEN if is_listening else RED
+    color = GREEN if is_listening else RED # if listening then green otherwise red
     pygame.draw.circle(screen, color, (mic_x, mic_y), 15)
     
     # Draw microphone icon in white
-    # Main body of microphone
-    pygame.draw.rect(screen, WHITE, (mic_x - 3, mic_y - 8, 6, 12), border_radius=3)
-    pygame.draw.rect(screen, WHITE, (mic_x - 6, mic_y - 8, 12, 3), border_radius=1)
+    # pygame.draw.rect(screen, WHITE, (mic_x - 3, mic_y - 8, 6, 12), border_radius=3)
+    # pygame.draw.rect(screen, WHITE, (mic_x - 6, mic_y - 8, 12, 3), border_radius=1)
     
     # Base stand
     if is_listening:
@@ -313,7 +313,7 @@ def draw_microphone_indicator(is_listening):
                            16 + i*8, 16 + i*8),
                           math.radians(-45), math.radians(225), 1)
     
-    # Status text
+    # Status text indicating whether it's listening or idle
     font = pygame.font.Font(None, 24)
     status_text = "Listening..." if is_listening else "Idle"
     text_surface = font.render(status_text, True, WHITE)
@@ -359,17 +359,17 @@ def word_to_number(word):
     return number_dict.get(word.lower(), None)
 
 def voice_command_listener():
-    recognizer = KaldiRecognizer(model, 16000)
-    p = pyaudio.PyAudio()
+    recognizer = KaldiRecognizer(model, 16000) # processes 16kHz audio using the pre-loaded language model
+    p = pyaudio.PyAudio() 
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
-    stream.start_stream()
+    stream.start_stream() # continuous listening
 
     print("Vosk Voice Command Listener is active...")
     mic_status_queue.put(True)  # Indicate that the microphone is active
 
     try:
         while True:
-            data = stream.read(4000, exception_on_overflow=False)
+            data = stream.read(4000, exception_on_overflow=False) # read and process chunk of audio
             if recognizer.AcceptWaveform(data):
                 result = json.loads(recognizer.Result())
                 if "text" in result:
@@ -381,7 +381,7 @@ def voice_command_listener():
                     # Parse commands
                     if "start" in command:
                         command_queue.put(("STATE", GameState.PLAYING))
-                    elif "pause" in command:
+                    elif "pause" in command: # changes game state to paused and stops movement
                         command_queue.put(("STATE", GameState.PAUSED))
                     elif "resume" in command:
                         command_queue.put(("STATE", GameState.PLAYING))
@@ -525,7 +525,7 @@ def main():
             score_text = f"Score: {pacman.score}"
             text_surface = font.render(score_text, True, WHITE)
             screen.blit(text_surface, (10, 10))
-        elif game_state == GameState.PAUSED:
+        elif game_state == GameState.PAUSED: #dont call pacman.move
             # Draw the game state in background
             draw_maze()
             pacman.draw()
