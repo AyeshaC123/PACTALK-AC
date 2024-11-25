@@ -10,6 +10,7 @@ import pyaudio
 import json
 import threading
 from queue import Queue
+from collections import deque
 
 import os
 print("Current working directory:", os.getcwd())
@@ -17,20 +18,18 @@ print("Current working directory:", os.getcwd())
 from vosk import Model
 model = Model(lang="en-us")  # Loads a pre-downloaded compact model
 
-
-# # Load the Vosk model (ensure the correct path to the model directory)
-# vosk_model_path = "path/to/vosk/model"
-# vosk_model = Model(vosk_model_path)
-
 # Initialize Pygame
 pygame.init()
 
 # Constants 
+HISTORY_WIDTH = 200  # Width of command history panel
 CELL_SIZE = 30
 GRID_WIDTH = 19
-GRID_HEIGHT = 21
-SCREEN_WIDTH = GRID_WIDTH * CELL_SIZE
-SCREEN_HEIGHT = GRID_HEIGHT * CELL_SIZE
+GRID_HEIGHT = 20
+GAME_SCREEN_WIDTH = GRID_WIDTH * CELL_SIZE
+GAME_SCREEN_HEIGHT = GRID_HEIGHT * CELL_SIZE
+SCREEN_WIDTH = GAME_SCREEN_WIDTH + HISTORY_WIDTH  # Total width including history panel
+SCREEN_HEIGHT = GAME_SCREEN_HEIGHT
 
 # Colors
 BLACK = (0, 0, 0)
@@ -39,6 +38,7 @@ WHITE = (255, 255, 255)
 YELLOW = (255, 255, 0)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
+GRAY = (50, 50, 50)
 
 # Initialize screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -53,6 +53,55 @@ class GameState(Enum):
     MENU = "menu"
     PLAYING = "playing"
     PAUSED = "paused"
+
+# Command History
+class CommandHistory:
+    def __init__(self, max_commands=15):
+        self.commands = deque(maxlen=max_commands)
+        self.font = pygame.font.Font(None, 24)
+    
+    def add_command(self, command):
+        timestamp = time.strftime("%H:%M:%S")
+        self.commands.append(f"[{timestamp}] {command}")
+    
+    def draw(self):
+        # Draw background for history panel
+        history_rect = pygame.Rect(0, 0, HISTORY_WIDTH, SCREEN_HEIGHT)
+        pygame.draw.rect(screen, GRAY, history_rect)
+        pygame.draw.line(screen, WHITE, (HISTORY_WIDTH-1, 0), (HISTORY_WIDTH-1, SCREEN_HEIGHT), 2)
+        
+        # Draw title
+        title = self.font.render("Command History", True, WHITE)
+        title_rect = title.get_rect(centerx=HISTORY_WIDTH//2, top=10)
+        screen.blit(title, title_rect)
+        pygame.draw.line(screen, WHITE, (10, 40), (HISTORY_WIDTH-10, 40), 1)
+        
+        # Draw commands
+        y_offset = 50
+        for command in reversed(self.commands):
+            text = self.font.render(command, True, WHITE)
+            # Wrap text if too long
+            if text.get_width() > HISTORY_WIDTH - 20:
+                words = command.split()
+                current_line = words[0]
+                lines = []
+                for word in words[1:]:
+                    test_line = current_line + " " + word
+                    test_surface = self.font.render(test_line, True, WHITE)
+                    if test_surface.get_width() <= HISTORY_WIDTH - 20:
+                        current_line = test_line
+                    else:
+                        lines.append(current_line)
+                        current_line = word
+                lines.append(current_line)
+                for line in lines:
+                    text = self.font.render(line, True, WHITE)
+                    screen.blit(text, (10, y_offset))
+                    y_offset += 25
+            else:
+                screen.blit(text, (10, y_offset))
+                y_offset += 25
+                
 
 # Maze layout
 MAZE = [
@@ -79,88 +128,69 @@ MAZE = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ]
 
-import random
-
-# Add this to define Blinky's image and scale it
-blinky_img = pygame.transform.scale(pygame.image.load('assets/ghost_images/red.png'), (CELL_SIZE, CELL_SIZE))
-
-
 class Ghost:
     def __init__(self, x, y, image_path, target=None):
-        self.x_pos = x * CELL_SIZE  # Pixel position
-        self.y_pos = y * CELL_SIZE  # Pixel position
-        self.image = pygame.image.load(image_path)
-        self.image = pygame.transform.scale(self.image, (CELL_SIZE, CELL_SIZE))
-        self.direction = 0  # Initial direction: 0=right, 1=left, 2=up, 3=down
-        self.speed = 2  # Match Pac-Man's speed
-        self.turns = [False, False, False, False]  # Right, Left, Up, Down
-        self.target = target  # Target coordinates (e.g., Pac-Man)
+        self.x_pos = x * CELL_SIZE
+        self.y_pos = y * CELL_SIZE
+        self.image = pygame.transform.scale(pygame.image.load(image_path), (CELL_SIZE, CELL_SIZE))
+        self.direction = 0
+        self.speed = 2
+        self.turns = [False, False, False, False]
+        self.target = target
 
     def calculate_turns(self):
-        # Determine valid moves based on the maze layout
         grid_x = self.x_pos // CELL_SIZE
         grid_y = self.y_pos // CELL_SIZE
-        self.turns = [False, False, False, False]  # Reset
+        self.turns = [False, False, False, False]
 
-        if MAZE[grid_y][grid_x + 1] != 1:  # Right
+        if MAZE[grid_y][grid_x + 1] != 1:
             self.turns[0] = True
-        if MAZE[grid_y][grid_x - 1] != 1:  # Left
+        if MAZE[grid_y][grid_x - 1] != 1:
             self.turns[1] = True
-        if MAZE[grid_y - 1][grid_x] != 1:  # Up
+        if MAZE[grid_y - 1][grid_x] != 1:
             self.turns[2] = True
-        if MAZE[grid_y + 1][grid_x] != 1:  # Down
+        if MAZE[grid_y + 1][grid_x] != 1:
             self.turns[3] = True
 
     def move_blinky(self):
-        # Only allow direction changes when aligned with the grid
         if self.x_pos % CELL_SIZE == 0 and self.y_pos % CELL_SIZE == 0:
-            # Update current grid position
             grid_x = self.x_pos // CELL_SIZE
             grid_y = self.y_pos // CELL_SIZE
-
-            # Compute target grid position for Pac-Man
             target_x = self.target[0]
             target_y = self.target[1]
 
-            # Recalculate valid turns
             self.calculate_turns()
 
-            # List possible moves and their distances to Pac-Man
             moves = []
-            if self.turns[0]:  # Right
+            if self.turns[0]:
                 moves.append(((grid_x + 1, grid_y), (target_x - (grid_x + 1))**2 + (target_y - grid_y)**2, 0))
-            if self.turns[1]:  # Left
+            if self.turns[1]:
                 moves.append(((grid_x - 1, grid_y), (target_x - (grid_x - 1))**2 + (target_y - grid_y)**2, 1))
-            if self.turns[2]:  # Up
+            if self.turns[2]:
                 moves.append(((grid_x, grid_y - 1), (target_x - grid_x)**2 + (target_y - (grid_y - 1))**2, 2))
-            if self.turns[3]:  # Down
+            if self.turns[3]:
                 moves.append(((grid_x, grid_y + 1), (target_x - grid_x)**2 + (target_y - (grid_y + 1))**2, 3))
 
-            # Choose the move with the smallest distance to Pac-Man
             if moves:
-                best_move = min(moves, key=lambda x: x[1])  # Sort by distance
-                self.direction = best_move[2]  # Update direction
+                best_move = min(moves, key=lambda x: x[1])
+                self.direction = best_move[2]
 
-        # Move in the chosen direction
-        if self.direction == 0:  # Right
+        if self.direction == 0:
             self.x_pos += self.speed
-        elif self.direction == 1:  # Left
+        elif self.direction == 1:
             self.x_pos -= self.speed
-        elif self.direction == 2:  # Up
+        elif self.direction == 2:
             self.y_pos -= self.speed
-        elif self.direction == 3:  # Down
+        elif self.direction == 3:
             self.y_pos += self.speed
 
-        # Handle wrapping at boundaries
         if self.x_pos < 0:
-            self.x_pos = SCREEN_WIDTH - CELL_SIZE
-        elif self.x_pos >= SCREEN_WIDTH:
+            self.x_pos = GAME_SCREEN_WIDTH - CELL_SIZE
+        elif self.x_pos >= GAME_SCREEN_WIDTH:
             self.x_pos = 0
 
     def draw(self):
-        screen.blit(self.image, (self.x_pos, self.y_pos))
- 
-
+        screen.blit(self.image, (self.x_pos + HISTORY_WIDTH, self.y_pos))
 
 class PacMan:
     def __init__(self):
@@ -171,33 +201,25 @@ class PacMan:
         self.mouth_angle = 0
         self.mouth_change = 5
         self.score = 0
-        self.speed = 2  # Matches ghost speed
-        self.step_accumulator = 0  # Tracks fractional steps
+        self.speed = 2
+        self.step_accumulator = 0
 
     def move(self):
-        # Accumulate steps based on speed
         self.step_accumulator += self.speed
-
-        # Only move when full step is accumulated
         if self.step_accumulator >= 1:
             new_x = self.x + self.direction[0]
             new_y = self.y + self.direction[1]
-
             if (0 <= new_x < GRID_WIDTH and
                 0 <= new_y < GRID_HEIGHT and
                 MAZE[new_y][new_x] != 1):
-
                 if MAZE[new_y][new_x] == 0:
                     MAZE[new_y][new_x] = 2
                     self.score += 10
                 elif MAZE[new_y][new_x] == 3:
                     MAZE[new_y][new_x] = 2
                     self.score += 50
-
                 self.x = new_x
                 self.y = new_y
-
-            # Deduct one step's worth from the accumulator
             self.step_accumulator -= 1
 
     def move_multiple(self, direction, steps):
@@ -205,32 +227,27 @@ class PacMan:
         while remaining_steps > 0:
             new_x = self.x + direction[0]
             new_y = self.y + direction[1]
-
-            # Check if we hit a wall
             if (not 0 <= new_x < GRID_WIDTH or 
                 not 0 <= new_y < GRID_HEIGHT or 
                 MAZE[new_y][new_x] == 1):
                 break
-
-            # Move and collect points
             if MAZE[new_y][new_x] == 0:
                 MAZE[new_y][new_x] = 2
                 self.score += 10
             elif MAZE[new_y][new_x] == 3:
                 MAZE[new_y][new_x] = 2
                 self.score += 50
-
             self.x = new_x
             self.y = new_y
             remaining_steps -= 1
-        self.direction = [0, 0]  # Reset direction after movement`
+        self.direction = [0, 0]
 
     def draw(self):
         self.mouth_angle += self.mouth_change
         if self.mouth_angle >= 45 or self.mouth_angle <= 0:
             self.mouth_change = -self.mouth_change
 
-        center = (self.x * CELL_SIZE + CELL_SIZE // 2,
+        center = (self.x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
                  self.y * CELL_SIZE + CELL_SIZE // 2)
 
         start_angle = self.mouth_angle
@@ -256,31 +273,37 @@ class PacMan:
                        math.radians(rotation + end_angle),
                        self.radius)
 
-
 def draw_maze():
     for y in range(GRID_HEIGHT):
         for x in range(GRID_WIDTH):
             cell = MAZE[y][x]
-            rect = pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-            
+            rect = pygame.Rect(x * CELL_SIZE + HISTORY_WIDTH, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
             if cell == 1:
                 pygame.draw.rect(screen, BLUE, rect)
             elif cell == 0:
                 pygame.draw.circle(screen, WHITE,
-                                 (x * CELL_SIZE + CELL_SIZE // 2,
+                                 (x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
                                   y * CELL_SIZE + CELL_SIZE // 2), 3)
             elif cell == 3:
                 pygame.draw.circle(screen, WHITE,
-                                 (x * CELL_SIZE + CELL_SIZE // 2,
+                                 (x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
                                   y * CELL_SIZE + CELL_SIZE // 2), 8)
 
 def draw_pause_screen():
+<<<<<<< HEAD
     # creates a semi-transparent overlay
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     overlay.fill((0, 0, 0))
     overlay.set_alpha(128)
     screen.blit(overlay, (0, 0))
     # renders the PAUSED text
+=======
+    overlay = pygame.Surface((GAME_SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay.fill((0, 0, 0))
+    overlay.set_alpha(128)
+    screen.blit(overlay, (HISTORY_WIDTH, 0))
+    
+>>>>>>> 1837ab3b0f8936549a774e052b5685ce031befea
     font = pygame.font.Font(None, 74)
     text = font.render("PAUSED", True, WHITE)
     text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)) # calculates the spot on screen
@@ -324,11 +347,16 @@ def draw_start_screen():
     title_font = pygame.font.Font(None, 53)
     instruction_font = pygame.font.Font(None, 36)
     
+    # Calculate the center of the game area (excluding command history panel)
+    game_center_x = HISTORY_WIDTH + (GAME_SCREEN_WIDTH // 2)
+    
+    # Draw title
     title_text = "Voice-Controlled Pac-Man"
     title_surface = title_font.render(title_text, True, YELLOW)
-    title_rect = title_surface.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//4))
+    title_rect = title_surface.get_rect(center=(game_center_x, SCREEN_HEIGHT // 4))
     screen.blit(title_surface, title_rect)
     
+    # Instructions
     instructions = [
         "Voice Commands:",
         '"Start" - Begin game',
@@ -340,12 +368,16 @@ def draw_start_screen():
         "Press Enter or say 'Start' to begin"
     ]
     
+    # Calculate y-offset starting point
+    start_y = title_rect.bottom + 30  # Leave space below the title
+    line_spacing = 40  # Spacing between lines of text
+    
     for i, line in enumerate(instructions):
         text_surface = instruction_font.render(line, True, WHITE)
-        text_rect = text_surface.get_rect(
-            center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + i * 40)
-        )
+        text_rect = text_surface.get_rect(center=(game_center_x, start_y + i * line_spacing))
         screen.blit(text_surface, text_rect)
+
+
 
 def word_to_number(word):
     """Convert word numbers to integers"""
@@ -435,6 +467,9 @@ def main():
     game_state = GameState.MENU
     is_listening = False
     last_error_check = time.time()
+    
+    # Initialize command history
+    command_history = CommandHistory()
 
     blinky = Ghost(9, 7, "assets/ghost_images/red.png", target=[pacman.x, pacman.y])
 
@@ -458,36 +493,68 @@ def main():
                     running = False
                 elif game_state == GameState.MENU and event.key == pygame.K_RETURN:
                     game_state = GameState.PLAYING
+                    command_history.add_command("Game Started")
                 elif game_state == GameState.PLAYING:
                     if event.key == pygame.K_UP:
                         pacman.direction = [0, -1]
+                        command_history.add_command("Move Up")
                     elif event.key == pygame.K_DOWN:
                         pacman.direction = [0, 1]
+                        command_history.add_command("Move Down")
                     elif event.key == pygame.K_LEFT:
                         pacman.direction = [-1, 0]
+                        command_history.add_command("Move Left")
                     elif event.key == pygame.K_RIGHT:
                         pacman.direction = [1, 0]
+                        command_history.add_command("Move Right")
                     elif event.key == pygame.K_p:
                         game_state = GameState.PAUSED
+                        command_history.add_command("Game Paused")
                 elif game_state == GameState.PAUSED and event.key == pygame.K_p:
                     game_state = GameState.PLAYING
+                    command_history.add_command("Game Resumed")
         
         # Handle voice commands
         if not command_queue.empty():
             command_type, command_data = command_queue.get()
             if command_type == "QUIT":
+                command_history.add_command("Game Quit")
                 running = False
             elif command_type == "STATE":
+                if command_data == GameState.PLAYING:
+                    command_history.add_command("Game Started" if game_state == GameState.MENU else "Game Resumed")
+                elif command_data == GameState.PAUSED:
+                    command_history.add_command("Game Paused")
                 game_state = command_data
             elif command_type == "MOVE" and game_state == GameState.PLAYING:
+                direction_text = ""
+                if command_data == [0, -1]:
+                    direction_text = "Move Up"
+                elif command_data == [0, 1]:
+                    direction_text = "Move Down"
+                elif command_data == [-1, 0]:
+                    direction_text = "Move Left"
+                elif command_data == [1, 0]:
+                    direction_text = "Move Right"
+                command_history.add_command(direction_text)
                 pacman.direction = command_data
             elif command_type == "MOVE_MULTIPLE" and game_state == GameState.PLAYING:
                 direction, steps = command_data
+                direction_text = ""
+                if direction == [0, -1]:
+                    direction_text = f"Move Up {steps} steps"
+                elif direction == [0, 1]:
+                    direction_text = f"Move Down {steps} steps"
+                elif direction == [-1, 0]:
+                    direction_text = f"Move Left {steps} steps"
+                elif direction == [1, 0]:
+                    direction_text = f"Move Right {steps} steps"
+                command_history.add_command(direction_text)
                 pacman.move_multiple(direction, steps)
         
         # Update game state
         if game_state == GameState.PLAYING:
-            pacman.move()  # Keep the continuous movement
+            pacman.move()
 
         # Check for microphone status updates
         while not mic_status_queue.empty():
@@ -499,24 +566,20 @@ def main():
         if game_state == GameState.MENU:
             draw_start_screen()
         elif game_state == GameState.PLAYING:
-            pacman.move()
             draw_maze()
-
-            # Update and draw ghosts
-            # Update and draw Blinky
-            blinky.target = [pacman.x, pacman.y]  # Update target to Pac-Man's position
-            blinky.move_blinky()  # Move Blinky
-            blinky.draw()  # Draw Blinky
+            blinky.target = [pacman.x, pacman.y]
+            blinky.move_blinky()
+            blinky.draw()
+            
             if blinky.x_pos // CELL_SIZE == pacman.x and blinky.y_pos // CELL_SIZE == pacman.y:
-                print("Pac-Man was caught by Blinky!")
+                command_history.add_command("Game Over - Caught by Blinky!")
                 font = pygame.font.Font(None, 74)
                 text = font.render("GAME OVER", True, RED)
                 text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
                 screen.blit(text, text_rect)
                 pygame.display.flip()
-                pygame.time.wait(3000)  # Wait 3 seconds to display the message
-                running = False  # End the game loop
-
+                pygame.time.wait(3000)
+                running = False
 
             pacman.draw()
             
@@ -525,12 +588,18 @@ def main():
             score_text = f"Score: {pacman.score}"
             text_surface = font.render(score_text, True, WHITE)
             screen.blit(text_surface, (10, 10))
+<<<<<<< HEAD
         elif game_state == GameState.PAUSED: #dont call pacman.move
             # Draw the game state in background
+=======
+        elif game_state == GameState.PAUSED:
+>>>>>>> 1837ab3b0f8936549a774e052b5685ce031befea
             draw_maze()
             pacman.draw()
-            # Overlay pause screen
             draw_pause_screen()
+        
+        # Draw command history and microphone indicator
+        command_history.draw()
         draw_microphone_indicator(is_listening)
 
         pygame.display.flip()
