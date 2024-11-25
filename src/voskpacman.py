@@ -290,20 +290,11 @@ def draw_maze():
                                   y * CELL_SIZE + CELL_SIZE // 2), 8)
 
 def draw_pause_screen():
-<<<<<<< HEAD
-    # creates a semi-transparent overlay
-    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-    overlay.fill((0, 0, 0))
-    overlay.set_alpha(128)
-    screen.blit(overlay, (0, 0))
-    # renders the PAUSED text
-=======
     overlay = pygame.Surface((GAME_SCREEN_WIDTH, SCREEN_HEIGHT))
     overlay.fill((0, 0, 0))
     overlay.set_alpha(128)
     screen.blit(overlay, (HISTORY_WIDTH, 0))
     
->>>>>>> 1837ab3b0f8936549a774e052b5685ce031befea
     font = pygame.font.Font(None, 74)
     text = font.render("PAUSED", True, WHITE)
     text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)) # calculates the spot on screen
@@ -588,12 +579,8 @@ def main():
             score_text = f"Score: {pacman.score}"
             text_surface = font.render(score_text, True, WHITE)
             screen.blit(text_surface, (10, 10))
-<<<<<<< HEAD
         elif game_state == GameState.PAUSED: #dont call pacman.move
             # Draw the game state in background
-=======
-        elif game_state == GameState.PAUSED:
->>>>>>> 1837ab3b0f8936549a774e052b5685ce031befea
             draw_maze()
             pacman.draw()
             draw_pause_screen()
