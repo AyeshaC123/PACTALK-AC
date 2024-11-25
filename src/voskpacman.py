@@ -18,6 +18,18 @@ print("Current working directory:", os.getcwd())
 from vosk import Model
 model = Model(lang="en-us")  # Loads a pre-downloaded compact model
 
+custom_vocabulary = [
+    "up", "down", "left", "right", 
+    "pause", "resume", "quit", "stop", "start",
+    "one", "two", "three", "four", "five", 
+    "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "thirteen", "fourteen",
+    "fifteen", "sixteen", "seventeen", "eighteen",
+    "nineteen", "twenty"
+]
+import json
+grammar = json.dumps(custom_vocabulary)
+
 # Initialize Pygame
 pygame.init()
 
@@ -381,9 +393,31 @@ def word_to_number(word):
     }
     return number_dict.get(word.lower(), None)
 
+def calibrate_microphone(p, rate=16000, channels=1, duration=2):
+    """Calibrates the microphone by capturing background noise."""
+    print("Calibrating microphone... Please stay quiet.")
+    stream = p.open(format=pyaudio.paInt16, channels=channels, rate=rate, input=True, frames_per_buffer=8000)
+    stream.start_stream()
+
+    # Collect audio for calibration
+    frames = []
+    for _ in range(int(rate / 8000 * duration)):
+        data = stream.read(8000, exception_on_overflow=False)
+        frames.append(data)
+
+    # Stop and close the stream
+    stream.stop_stream()
+    stream.close()
+    print("Calibration complete.")
+
+    # Return background noise as raw data
+    return b"".join(frames)
+
 def voice_command_listener():
-    recognizer = KaldiRecognizer(model, 16000) # processes 16kHz audio using the pre-loaded language model
+    recognizer = KaldiRecognizer(model, 16000, grammar) # processes 16kHz audio using the pre-loaded language model
     p = pyaudio.PyAudio() 
+    background_noise = calibrate_microphone(p)
+    print("Background noise calibration complete.")
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
     stream.start_stream() # continuous listening
 
