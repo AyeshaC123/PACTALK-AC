@@ -498,6 +498,15 @@ def main():
 
     blinky = Ghost(9, 7, "assets/ghost_images/red.png", target=[pacman.x, pacman.y])
 
+    def check_win_condition(maze):
+        for row in maze:
+            if 0 in row:  # If any 0 (dot) remains, game is not won
+                return False
+        return True
+
+
+    # Game Loop:
+
     while running:
         current_time = time.time()
         
