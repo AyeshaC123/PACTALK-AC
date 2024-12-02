@@ -458,7 +458,7 @@ def voice_command_listener():
                             direction = [1, 0]
                         
                         # Look for number in words (either digit or word form)
-                        steps = 1  # default to 1 if no number given
+                        steps = None  # default to 1 if no number given
                         for word in words:
                             # Check if it's a digit
                             if word.isdigit():
@@ -472,7 +472,7 @@ def voice_command_listener():
                         
                         print(f"Moving {steps} steps in direction {direction}")  # Debug print
                         
-                        if steps == 1:
+                        if steps == None:
                             command_queue.put(("MOVE", direction))  # Use old movement for single steps
                         else:
                             command_queue.put(("MOVE_MULTIPLE", (direction, steps)))               
