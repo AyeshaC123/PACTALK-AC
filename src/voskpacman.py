@@ -235,18 +235,24 @@ class PacMan:
             self.step_accumulator -= 1
 
     def move_multiple(self, direction, steps):
+
         remaining_steps = steps
         while remaining_steps > 0:
+            #debug: log steps left and current position
+            #print(f"Remaining steps: {remaining_steps}, Current position: ({self.x}, {self.y})")
+
+            #update direction for visual rotation
+            self.direction = direction
+
+            # Calculate the new position
             new_x = self.x + direction[0]
             new_y = self.y + direction[1]
 
             # Check if the new position is valid
-            if (not 0 <= new_x < GRID_WIDTH or 
-                not 0 <= new_y < GRID_HEIGHT or 
-                MAZE[new_y][new_x] == 1):
+            if not (0 <= new_x < GRID_WIDTH and 0 <= new_y < GRID_HEIGHT and MAZE[new_y][new_x] != 1):
                 break
 
-            # Collect points
+            # Handle collecting points
             if MAZE[new_y][new_x] == 0:
                 MAZE[new_y][new_x] = 2
                 self.score += 10
@@ -254,45 +260,74 @@ class PacMan:
                 MAZE[new_y][new_x] = 2
                 self.score += 50
 
-            #update position
+            # Update position
             self.x = new_x
             self.y = new_y
+
+            # Decrement remaining steps
             remaining_steps -= 1
 
+            # Redraw the maze and Pac-Man to ensure direction updates are reflected
+            draw_maze()
+            self.draw()
+            pygame.display.flip()
+
+        #reset direction after completing all steps
         self.direction = [0, 0]
-        #make pacman face direction of movement
-        #self.direction = direction
+
+        #debug direction
+        print(f"Reset direction to: {self.direction}")
+
 
     def draw(self):
+        #update mouth angle for opening/closing effect
         self.mouth_angle += self.mouth_change
         if self.mouth_angle >= 45 or self.mouth_angle <= 0:
             self.mouth_change = -self.mouth_change
 
         center = (self.x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
-                 self.y * CELL_SIZE + CELL_SIZE // 2)
+                self.y * CELL_SIZE + CELL_SIZE // 2)
 
+        #debug: current position and direction
+        print(f"Drawing Pac-Man at position: ({self.x}, {self.y}), Direction: {self.direction}")
+
+        #determine rotation based on direction
+        if self.direction == [1, 0]:  #right
+            rotation = 0
+        elif self.direction == [-1, 0]:  #left
+            rotation = 180
+        elif self.direction == [0, -1]:  #up
+            rotation = 90
+        elif self.direction == [0, 1]:  #down
+            rotation = 270
+        else:
+            #no movement, use last rotation
+            rotation = getattr(self, 'last_rotation', 0)
+
+        #store last valid rotation for idle state
+        self.last_rotation = rotation
+
+        #calculate mouth angles for the arc
         start_angle = self.mouth_angle
         end_angle = 360 - self.mouth_angle
 
-        if self.direction[0] == 1:
-            rotation = 0
-        elif self.direction[0] == -1:
-            rotation = 180
-        elif self.direction[1] == -1:
-            rotation = 90
-        elif self.direction[1] == 1:
-            rotation = 270
-        else:
-            rotation = 0
+        #adjust angles for rotation
+        start_angle += rotation
+        end_angle += rotation
 
+        #debug mouth angles
+        #print(f"Mouth angles - Start: {start_angle}, End: {end_angle}")
+
+        # Draw Pac-Man arc
         pygame.draw.arc(screen, YELLOW,
-                       (center[0] - self.radius,
+                        (center[0] - self.radius,
                         center[1] - self.radius,
                         self.radius * 2,
                         self.radius * 2),
-                       math.radians(rotation + start_angle),
-                       math.radians(rotation + end_angle),
-                       self.radius)
+                        math.radians(start_angle),
+                        math.radians(end_angle),
+                        self.radius)
+
 
 def draw_maze():
     for y in range(GRID_HEIGHT):
