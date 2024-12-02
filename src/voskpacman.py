@@ -656,6 +656,15 @@ def main():
             blinky.move_blinky()
             blinky.draw()
             
+            # if blinky.x_pos // CELL_SIZE == pacman.x and blinky.y_pos // CELL_SIZE == pacman.y:
+            #     command_history.add_command("Game Over - Caught by Blinky!")
+            #     font = pygame.font.Font(None, 74)
+            #     text = font.render("GAME OVER", True, RED)
+            #     text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+            #     screen.blit(text, text_rect)
+            #     pygame.display.flip()
+            #     pygame.time.wait(3000)
+            #     running = False
             if blinky.x_pos // CELL_SIZE == pacman.x and blinky.y_pos // CELL_SIZE == pacman.y:
                 command_history.add_command("Game Over - Caught by Blinky!")
                 font = pygame.font.Font(None, 74)
@@ -664,7 +673,11 @@ def main():
                 screen.blit(text, text_rect)
                 pygame.display.flip()
                 pygame.time.wait(3000)
-                running = False
+                
+                # Reset the game and return to menu
+                reset_game(pacman, blinky)
+                game_state = GameState.MENU
+
 
             pacman.draw()
             
