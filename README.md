@@ -23,11 +23,12 @@ Versions:
     python voskpacman.py
 
 
-###  Files within Directory
+## Project Files
 
-1. src/voskpacman.py : Python script that creates a voice-controlled Pac-Man game using Pygame and Vosk, enabling gameplay via voice commands like "move up" or "pause," with dynamic state management and a command history panel.
-2. src/assets/ghost_images: Folder that contains ghost drawing image used in game.
-3. src/__pycache__/board.cpython-312.pyc: board.cpython-312.pyc is a compiled Python bytecode file created by Python 3.12 to optimize execution of the board.py script.
+1. [src/voskpacman.py](src/voskpacman.py): Python script that creates a voice-controlled Pac-Man game using Pygame and Vosk, enabling gameplay via voice commands like "move up" or "pause," with dynamic state management and a command history panel.
+2. [src/assets/ghost_images](src/assets/ghost_images): Folder that contains ghost drawing images used in the game.
+3. [src/__pycache__/board.cpython-312.pyc](src/__pycache__/board.cpython-312.pyc): Compiled Python bytecode file created by Python 3.12 to optimize execution of the `board.py` script.
+
 
 
     
