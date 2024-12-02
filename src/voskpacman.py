@@ -503,6 +503,43 @@ def main():
             if 0 in row:  # If any 0 (dot) remains, game is not won
                 return False
         return True
+    def reset_game(pacman, blinky):
+        # Reset maze
+        global MAZE
+        MAZE = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+            [1,3,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,3,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,0,1],
+            [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+            [1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,1,1,2,1,1,0,1,0,1,1,1,1],
+            [0,0,0,0,0,0,0,1,2,2,2,1,0,0,0,0,0,0,0],
+            [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+            [1,3,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,3,1],
+            [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
+            [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ]
+        
+        # Reset Pacman
+        pacman.x = 9
+        pacman.y = 15
+        pacman.direction = [0, 0]
+        pacman.score = 0
+        
+        # Reset Blinky
+        blinky.x_pos = 9 * CELL_SIZE
+        blinky.y_pos = 7 * CELL_SIZE
+        blinky.direction = 0
 
 
     # Game Loop:
@@ -589,6 +626,20 @@ def main():
         # Update game state
         if game_state == GameState.PLAYING:
             pacman.move()
+
+            # Check win condition
+            if check_win_condition(MAZE):
+                command_history.add_command("Congratulations! You Won!")
+                font = pygame.font.Font(None, 74)
+                text = font.render("YOU WIN!", True, GREEN)
+                text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+                screen.blit(text, text_rect)
+                pygame.display.flip()
+                pygame.time.wait(3000)
+                
+                # Reset the game
+                reset_game(pacman, blinky)
+                game_state = GameState.MENU
 
         # Check for microphone status updates
         while not mic_status_queue.empty():
