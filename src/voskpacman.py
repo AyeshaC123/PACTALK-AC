@@ -239,16 +239,22 @@ class PacMan:
         while remaining_steps > 0:
             new_x = self.x + direction[0]
             new_y = self.y + direction[1]
+
+            # Check if the new position is valid
             if (not 0 <= new_x < GRID_WIDTH or 
                 not 0 <= new_y < GRID_HEIGHT or 
                 MAZE[new_y][new_x] == 1):
                 break
+
+            # Collect points
             if MAZE[new_y][new_x] == 0:
                 MAZE[new_y][new_x] = 2
                 self.score += 10
             elif MAZE[new_y][new_x] == 3:
                 MAZE[new_y][new_x] = 2
                 self.score += 50
+
+            #update position
             self.x = new_x
             self.y = new_y
             remaining_steps -= 1
