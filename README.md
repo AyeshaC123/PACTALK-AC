@@ -22,6 +22,8 @@ Versions:
         
     python voskpacman.py
 
-  
+
+###  Include a readme file that explains what each file is, how the files work together
+add this part
 
     
