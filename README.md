@@ -11,6 +11,10 @@ Our project is a Python PacMan game that uses voice commands to play, but you ma
     Run:  
         
     pip install pygame vosk pyaudio
+Versions:  
++ pygame -- 2.6.1  
++ vosk -- 0.3.45  
++ pyaudio -- 0.2.14  
 
 ### Run the game:
   Navigate to the `src` directory containing the `voskpacman.py` script.  
