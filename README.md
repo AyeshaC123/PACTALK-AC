@@ -1,6 +1,6 @@
 # PACTALK
 
-Our project is a Python PacMan game that uses voice commands to play, but you may also use the keyboard if you wish. Our game is unique since it offers the ability to play with your voice alone which aims to increase accessibility to traditional games such as PacMan. We hope this game can help people with temporary or permanent motor disabilities enjoy the game and those who wish to play it with their voices!
+Our project is a Python-based PacMan game that allows players to control/play the game using voice commands, though keyboard input is also available. What makes our game unique is its focus on voice-driven gameplay, offering an accessible alternative to traditional PacMan. This feature aims to enhance accessibility for individuals with temporary or permanent motor disabilities, providing an inclusive gaming experience for anyone who prefers to play with their voice. We hope this application opens up new opportunities for enjoyment and engagement with classic games like PacMan!
 
 ### Required Installations
   Ensure **Python 3.8 or later** is installed on the machine. 
