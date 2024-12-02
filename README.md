@@ -4,11 +4,10 @@ Our project is a Python PacMan game that uses voice commands to play, but you ma
 
 ### Required Installations
   Python 3.8 or later: Ensure Python is installed on the machine.
-  
     You can download Python from python.org.
+    
 #### Dependencies:
   Install the required Python libraries using pip. 
-  
     Run:
     
     ```
