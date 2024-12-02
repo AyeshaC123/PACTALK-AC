@@ -8,15 +8,17 @@ Our project is a Python PacMan game that uses voice commands to play, but you ma
     
 #### Dependencies:
   Install the required Python libraries using pip. 
+  
     Run:
     
     pip install pygame vosk pyaudio
 
 ### Run the game:
   Navigate to the directory containing the voskpacman.py script.
-  Run:
-
-  python voskpacman.py
+  
+    Run:
+    
+    python voskpacman.py
 
   
 
