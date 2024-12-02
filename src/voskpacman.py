@@ -253,9 +253,9 @@ class PacMan:
             self.y = new_y
             remaining_steps -= 1
 
-        #self.direction = [0, 0]
+        self.direction = [0, 0]
         #make pacman face direction of movement
-        self.direction = direction
+        #self.direction = direction
 
     def draw(self):
         self.mouth_angle += self.mouth_change
