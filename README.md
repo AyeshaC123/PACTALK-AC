@@ -13,7 +13,7 @@ Our project is a Python PacMan game that uses voice commands to play, but you ma
     pip install pygame vosk pyaudio
 
 ### Run the game:
-  Navigate to the directory containing the voskpacman.py script.  
+  Navigate to the `src` directory containing the `voskpacman.py` script.  
     Run:  
         
     python voskpacman.py
