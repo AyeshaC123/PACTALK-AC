@@ -18,17 +18,17 @@ print("Current working directory:", os.getcwd())
 from vosk import Model
 model = Model(lang="en-us")  # Loads a pre-downloaded compact model
 
-custom_vocabulary = [
-    "up", "down", "left", "right", 
-    "pause", "resume", "quit", "stop", "start",
-    "one", "two", "three", "four", "five", 
-    "six", "seven", "eight", "nine", "ten",
-    "eleven", "twelve", "thirteen", "fourteen",
-    "fifteen", "sixteen", "seventeen", "eighteen",
-    "nineteen", "twenty"
-]
-import json
-grammar = json.dumps(custom_vocabulary)
+# custom_vocabulary = [
+#     "up", "down", "left", "right", 
+#     "pause", "resume", "quit", "stop", "start",
+#     "one", "two", "three", "four", "five", 
+#     "six", "seven", "eight", "nine", "ten",
+#     "eleven", "twelve", "thirteen", "fourteen",
+#     "fifteen", "sixteen", "seventeen", "eighteen",
+#     "nineteen", "twenty"
+# ]
+# import json
+# grammar = json.dumps(custom_vocabulary)
 
 # Initialize Pygame
 pygame.init()
@@ -417,7 +417,7 @@ def calibrate_microphone(p, rate=16000, channels=1, duration=2):
     return b"".join(frames)
 
 def voice_command_listener():
-    recognizer = KaldiRecognizer(model, 16000, grammar) # processes 16kHz audio using the pre-loaded language model
+    recognizer = KaldiRecognizer(model, 16000) # processes 16kHz audio using the pre-loaded language model
     p = pyaudio.PyAudio() 
     background_noise = calibrate_microphone(p)
     print("Background noise calibration complete.")
