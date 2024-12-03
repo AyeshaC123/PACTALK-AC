@@ -526,6 +526,27 @@ def voice_command_listener():
         stream.close()
         p.terminate()
 
+# Add this function near other helper functions like `reset_game()`
+def check_collision(pacman, blinky):
+    """
+    Check for a collision between Pac-Man and the ghost (Blinky).
+
+    :param pacman: PacMan object
+    :param blinky: Ghost object
+    :return: True if there is a collision, False otherwise
+    """
+    # Pac-Man's position in pixels
+    pacman_pos = (pacman.x * CELL_SIZE, pacman.y * CELL_SIZE)
+    
+    # Blinky's position in pixels
+    blinky_pos = (blinky.x_pos, blinky.y_pos)
+    
+    # Check if the distance between Pac-Man and Blinky is less than the collision threshold
+    collision_distance = CELL_SIZE // 2  # Adjust as needed for precision
+    distance = math.sqrt((pacman_pos[0] - blinky_pos[0])**2 + (pacman_pos[1] - blinky_pos[1])**2)
+    return distance < collision_distance
+
+
 def main():
     voice_thread = threading.Thread(target=voice_command_listener, daemon=True)
     voice_thread.start()
@@ -668,22 +689,20 @@ def main():
                 pacman.move_multiple(direction, steps)
         
         # Update game state
-        if game_state == GameState.PLAYING:
-            pacman.move()
+        # Replace existing collision logic with the `check_collision` function
+        if check_collision(pacman, blinky):
+            command_history.add_command("Game Over - Caught by Blinky!")
+            font = pygame.font.Font(None, 74)
+            text = font.render("GAME OVER", True, RED)
+            text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+            screen.blit(text, text_rect)
+            pygame.display.flip()
+            pygame.time.wait(3000)
+            
+            # Reset the game and return to menu
+            reset_game(pacman, blinky)
+            game_state = GameState.MENU
 
-            # Check win condition
-            if check_win_condition(MAZE):
-                command_history.add_command("Congratulations! You Won!")
-                font = pygame.font.Font(None, 74)
-                text = font.render("YOU WIN!", True, GREEN)
-                text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-                screen.blit(text, text_rect)
-                pygame.display.flip()
-                pygame.time.wait(3000)
-                
-                # Reset the game
-                reset_game(pacman, blinky)
-                game_state = GameState.MENU
 
         # Check for microphone status updates
         while not mic_status_queue.empty():
@@ -695,21 +714,30 @@ def main():
         if game_state == GameState.MENU:
             draw_start_screen()
         elif game_state == GameState.PLAYING:
-            draw_maze()
+            # Update Pac-Man's movement
+            pacman.move()
+
+            # Check if all dots have been eaten
+            if check_win_condition(MAZE):
+                command_history.add_command("You Win! Returning to Menu.")
+                font = pygame.font.Font(None, 74)
+                text = font.render("YOU WIN!", True, GREEN)
+                text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+                screen.blit(text, text_rect)
+                pygame.display.flip()
+                pygame.time.wait(3000)
+
+                # Reset the game and return to menu
+                reset_game(pacman, blinky)
+                game_state = GameState.MENU
+                continue  # Skip further updates for this frame
+
+            # Update Blinky's target and movement
             blinky.target = [pacman.x, pacman.y]
             blinky.move_blinky()
-            blinky.draw()
-            
-            # if blinky.x_pos // CELL_SIZE == pacman.x and blinky.y_pos // CELL_SIZE == pacman.y:
-            #     command_history.add_command("Game Over - Caught by Blinky!")
-            #     font = pygame.font.Font(None, 74)
-            #     text = font.render("GAME OVER", True, RED)
-            #     text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-            #     screen.blit(text, text_rect)
-            #     pygame.display.flip()
-            #     pygame.time.wait(3000)
-            #     running = False
-            if blinky.x_pos // CELL_SIZE == pacman.x and blinky.y_pos // CELL_SIZE == pacman.y:
+
+            # Check collision between Pac-Man and Blinky
+            if check_collision(pacman, blinky):
                 command_history.add_command("Game Over - Caught by Blinky!")
                 font = pygame.font.Font(None, 74)
                 text = font.render("GAME OVER", True, RED)
@@ -717,14 +745,29 @@ def main():
                 screen.blit(text, text_rect)
                 pygame.display.flip()
                 pygame.time.wait(3000)
-                
+
                 # Reset the game and return to menu
                 reset_game(pacman, blinky)
                 game_state = GameState.MENU
+                continue  # Skip drawing and score update for this frame
 
-
+            # Draw maze and game elements
+            draw_maze()
+            blinky.draw()
             pacman.draw()
-            
+
+            # Draw score
+            font = pygame.font.Font(None, 36)
+            score_text = f"Score: {pacman.score}"
+            text_surface = font.render(score_text, True, WHITE)
+            screen.blit(text_surface, (10, 10))
+
+
+            # Draw maze and game elements
+            draw_maze()
+            blinky.draw()
+            pacman.draw()
+
             # Draw score
             font = pygame.font.Font(None, 36)
             score_text = f"Score: {pacman.score}"
