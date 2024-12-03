@@ -18,18 +18,6 @@ print("Current working directory:", os.getcwd())
 from vosk import Model
 model = Model(lang="en-us")  # Loads a pre-downloaded compact model
 
-# custom_vocabulary = [
-#     "up", "down", "left", "right", 
-#     "pause", "resume", "quit", "stop", "start",
-#     "one", "two", "three", "four", "five", 
-#     "six", "seven", "eight", "nine", "ten",
-#     "eleven", "twelve", "thirteen", "fourteen",
-#     "fifteen", "sixteen", "seventeen", "eighteen",
-#     "nineteen", "twenty"
-# ]
-# import json
-# grammar = json.dumps(custom_vocabulary)
-
 # Initialize Pygame
 pygame.init()
 
@@ -238,9 +226,6 @@ class PacMan:
 
         remaining_steps = steps
         while remaining_steps > 0:
-            #debug: log steps left and current position
-            #print(f"Remaining steps: {remaining_steps}, Current position: ({self.x}, {self.y})")
-
             #update direction for visual rotation
             self.direction = direction
 
@@ -275,9 +260,6 @@ class PacMan:
         #reset direction after completing all steps
         self.direction = [0, 0]
 
-        #debug direction
-        print(f"Reset direction to: {self.direction}")
-
 
     def draw(self):
         #update mouth angle for opening/closing effect
@@ -287,9 +269,6 @@ class PacMan:
 
         center = (self.x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
                 self.y * CELL_SIZE + CELL_SIZE // 2)
-
-        #debug: current position and direction
-        print(f"Drawing Pac-Man at position: ({self.x}, {self.y}), Direction: {self.direction}")
 
         #determine rotation based on direction
         if self.direction == [1, 0]:  #right
@@ -369,10 +348,6 @@ def draw_microphone_indicator(is_listening):
     # Draw background circle
     color = GREEN if is_listening else RED # if listening then green otherwise red
     pygame.draw.circle(screen, color, (mic_x, mic_y), 15)
-    
-    # Draw microphone icon in white
-    # pygame.draw.rect(screen, WHITE, (mic_x - 3, mic_y - 8, 6, 12), border_radius=3)
-    # pygame.draw.rect(screen, WHITE, (mic_x - 6, mic_y - 8, 12, 3), border_radius=1)
     
     # Base stand
     if is_listening:
@@ -756,23 +731,12 @@ def main():
             blinky.draw()
             pacman.draw()
 
-            # Draw score
-            font = pygame.font.Font(None, 36)
+            # Draw score with larger, more visible font
+            font = pygame.font.Font(None, 48)
             score_text = f"Score: {pacman.score}"
-            text_surface = font.render(score_text, True, WHITE)
-            screen.blit(text_surface, (10, 10))
+            text_surface = font.render(score_text, True, YELLOW)
+            screen.blit(text_surface, (HISTORY_WIDTH + 10, 10))
 
-
-            # Draw maze and game elements
-            draw_maze()
-            blinky.draw()
-            pacman.draw()
-
-            # Draw score
-            font = pygame.font.Font(None, 36)
-            score_text = f"Score: {pacman.score}"
-            text_surface = font.render(score_text, True, WHITE)
-            screen.blit(text_surface, (10, 10))
         elif game_state == GameState.PAUSED: #dont call pacman.move
             # Draw the game state in background
             draw_maze()
