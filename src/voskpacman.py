@@ -1,3 +1,10 @@
+# Ayesha Chaudhry, Ifrah Malik, Shannon Joseph, Spandana Bondalapati
+# Final Project Code 
+# PACMAN is an accessible project enabling voice-controlled gameplay for individuals with dexterity or cognitive challenges, 
+# using Python and speech recognition. Using Python, Vosk, and pyttsx3, the project translates voice commands 
+# into gameplay actions while incorporating pauses for speech therapy, making gaming more inclusive and therapeutic.
+
+# Import statements
 import pygame
 import speech_recognition as sr
 import threading
@@ -128,40 +135,49 @@ MAZE = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ]
 
+#Ghost class
+
 class Ghost:
+# Initialize the Ghost object
     def __init__(self, x, y, image_path, target=None):
         self.x_pos = x * CELL_SIZE
         self.y_pos = y * CELL_SIZE
+        # Scale the ghost's image to fit the cell size
         self.image = pygame.transform.scale(pygame.image.load(image_path), (CELL_SIZE, CELL_SIZE))
         self.direction = 0
         self.speed = 2
         self.turns = [False, False, False, False]
         self.target = target
-
+    # Calculate turns based on the current position and the maze structure
     def calculate_turns(self):
         grid_x = self.x_pos // CELL_SIZE
         grid_y = self.y_pos // CELL_SIZE
         self.turns = [False, False, False, False]
-
+        # Check if moving right
         if MAZE[grid_y][grid_x + 1] != 1:
             self.turns[0] = True
+        # Check if moving left
         if MAZE[grid_y][grid_x - 1] != 1:
             self.turns[1] = True
+        # Check if moving up is valid
         if MAZE[grid_y - 1][grid_x] != 1:
             self.turns[2] = True
+        # Check if moving down is valid
         if MAZE[grid_y + 1][grid_x] != 1:
             self.turns[3] = True
 
+    # Function for having BLINKY chase PACMAN
     def move_blinky(self):
+        # Check if the ghost is aligned
         if self.x_pos % CELL_SIZE == 0 and self.y_pos % CELL_SIZE == 0:
             grid_x = self.x_pos // CELL_SIZE
             grid_y = self.y_pos // CELL_SIZE
             target_x = self.target[0]
             target_y = self.target[1]
-
+            # Update valid turn directions
             self.calculate_turns()
 
-            moves = []
+            moves = []  # List to store potential moves
             if self.turns[0]:
                 moves.append(((grid_x + 1, grid_y), (target_x - (grid_x + 1))**2 + (target_y - grid_y)**2, 0))
             if self.turns[1]:
@@ -171,10 +187,11 @@ class Ghost:
             if self.turns[3]:
                 moves.append(((grid_x, grid_y + 1), (target_x - grid_x)**2 + (target_y - (grid_y + 1))**2, 3))
 
+            # Choose the move with the shortest distance to PACMAN
             if moves:
                 best_move = min(moves, key=lambda x: x[1])
                 self.direction = best_move[2]
-
+        # Move the ghost in the chosen direction
         if self.direction == 0:
             self.x_pos += self.speed
         elif self.direction == 1:
@@ -188,7 +205,7 @@ class Ghost:
             self.x_pos = GAME_SCREEN_WIDTH - CELL_SIZE
         elif self.x_pos >= GAME_SCREEN_WIDTH:
             self.x_pos = 0
-
+    # Handle screen wrapping for horizontal movement
     def draw(self):
         screen.blit(self.image, (self.x_pos + HISTORY_WIDTH, self.y_pos))
 
