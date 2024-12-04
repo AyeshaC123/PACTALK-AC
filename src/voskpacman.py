@@ -193,6 +193,7 @@ class Ghost:
         screen.blit(self.image, (self.x_pos + HISTORY_WIDTH, self.y_pos))
 
 class PacMan:
+    # initializes the PacMan class
     def __init__(self):
         self.x = 9
         self.y = 15
@@ -204,22 +205,31 @@ class PacMan:
         self.speed = 2
         self.step_accumulator = 0
 
+    # function to move the pacman
     def move(self):
+        # increments the step accumulator by the current speed
         self.step_accumulator += self.speed
+        # if the step accumulator reaches or exceeds 1, attempt to move
         if self.step_accumulator >= 1:
+            # calculates the new position based on the current direction
             new_x = self.x + self.direction[0]
             new_y = self.y + self.direction[1]
+             # check if the new position is within the grid boundaries and not blocked by a wall
             if (0 <= new_x < GRID_WIDTH and
                 0 <= new_y < GRID_HEIGHT and
                 MAZE[new_y][new_x] != 1):
+                # if the new position is a path move and update the score
                 if MAZE[new_y][new_x] == 0:
                     MAZE[new_y][new_x] = 2
                     self.score += 10
+                # if position is a marker move and update the score 
                 elif MAZE[new_y][new_x] == 3:
                     MAZE[new_y][new_x] = 2
                     self.score += 50
+                # updates the entity's current position to the new coordinates
                 self.x = new_x
                 self.y = new_y
+            # decreases the step accumulator by 1 to account for the move
             self.step_accumulator -= 1
 
     def move_multiple(self, direction, steps):
@@ -294,9 +304,6 @@ class PacMan:
         start_angle += rotation
         end_angle += rotation
 
-        #debug mouth angles
-        #print(f"Mouth angles - Start: {start_angle}, End: {end_angle}")
-
         # Draw Pac-Man arc
         pygame.draw.arc(screen, YELLOW,
                         (center[0] - self.radius,
@@ -312,13 +319,17 @@ def draw_maze():
     for y in range(GRID_HEIGHT):
         for x in range(GRID_WIDTH):
             cell = MAZE[y][x]
+            # defines the rectangle for the current cell based on its grid position
             rect = pygame.Rect(x * CELL_SIZE + HISTORY_WIDTH, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            # draws a blue rectangle if the cell represents a wall (cell == 1)
             if cell == 1:
                 pygame.draw.rect(screen, BLUE, rect)
+            # draws a small white circle if the cell represents a path (cell == 0)
             elif cell == 0:
                 pygame.draw.circle(screen, WHITE,
                                  (x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
                                   y * CELL_SIZE + CELL_SIZE // 2), 3)
+            # draws a larger white circle if the cell represents a special marker (cell == 3)
             elif cell == 3:
                 pygame.draw.circle(screen, WHITE,
                                  (x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
@@ -418,18 +429,18 @@ def calibrate_microphone(p, rate=16000, channels=1, duration=2):
     stream = p.open(format=pyaudio.paInt16, channels=channels, rate=rate, input=True, frames_per_buffer=8000)
     stream.start_stream()
 
-    # Collect audio for calibration
+    # collects audio for calibration
     frames = []
     for _ in range(int(rate / 8000 * duration)):
         data = stream.read(8000, exception_on_overflow=False)
         frames.append(data)
 
-    # Stop and close the stream
+    # stop and close the stream
     stream.stop_stream()
     stream.close()
     print("Calibration complete.")
 
-    # Return background noise as raw data
+    # return background noise as raw data
     return b"".join(frames)
 
 def voice_command_listener():
@@ -441,7 +452,7 @@ def voice_command_listener():
     stream.start_stream() # continuous listening
 
     print("Vosk Voice Command Listener is active...")
-    mic_status_queue.put(True)  # Indicate that the microphone is active
+    mic_status_queue.put(True)  # indicates that microphone is active
 
     try:
         while True:
@@ -451,10 +462,10 @@ def voice_command_listener():
                 if "text" in result:
                     command = result["text"]
                     print(f"Recognized: {command}")
-                    # Split command into words
+                    # splits command into words
                     words = command.split()
                     
-                    # Parse commands
+                    # parse commands
                     if "start" in command:
                         command_queue.put(("STATE", GameState.PLAYING))
                     elif "pause" in command: # changes game state to paused and stops movement
@@ -501,7 +512,6 @@ def voice_command_listener():
         stream.close()
         p.terminate()
 
-# Add this function near other helper functions like `reset_game()`
 def check_collision(pacman, blinky):
     """
     Check for a collision between Pac-Man and the ghost (Blinky).
@@ -517,7 +527,7 @@ def check_collision(pacman, blinky):
     blinky_pos = (blinky.x_pos, blinky.y_pos)
     
     # Check if the distance between Pac-Man and Blinky is less than the collision threshold
-    collision_distance = CELL_SIZE // 2  # Adjust as needed for precision
+    collision_distance = CELL_SIZE // 2  
     distance = math.sqrt((pacman_pos[0] - blinky_pos[0])**2 + (pacman_pos[1] - blinky_pos[1])**2)
     return distance < collision_distance
 
@@ -544,7 +554,7 @@ def main():
                 return False
         return True
     def reset_game(pacman, blinky):
-        # Reset maze
+        # reset maze
         global MAZE
         MAZE = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -570,20 +580,19 @@ def main():
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ]
         
-        # Reset Pacman
+        # reset Pacman
         pacman.x = 9
         pacman.y = 15
         pacman.direction = [0, 0]
         pacman.score = 0
         
-        # Reset Blinky
+        # reset Blinky
         blinky.x_pos = 9 * CELL_SIZE
         blinky.y_pos = 7 * CELL_SIZE
         blinky.direction = 0
 
 
     # Game Loop:
-
     while running:
         current_time = time.time()
         
@@ -737,7 +746,7 @@ def main():
             text_surface = font.render(score_text, True, YELLOW)
             screen.blit(text_surface, (HISTORY_WIDTH + 10, 10))
 
-        elif game_state == GameState.PAUSED: #dont call pacman.move
+        elif game_state == GameState.PAUSED: # don't call pacman.move
             # Draw the game state in background
             draw_maze()
             pacman.draw()
