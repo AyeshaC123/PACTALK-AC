@@ -2,7 +2,7 @@
 # Final Project Code 
 # PACTALK is an accessible project enabling voice-controlled gameplay for individuals with dexterity or cognitive challenges, 
 # using Python and speech recognition. Using Python, Vosk, and pyttsx3, the project translates voice commands 
-# into gameplay actions while incorporating pauses for speech therapy, making gaming more inclusive and therapeutic.
+# into gameplay actions.
 
 # Import statements
 import pygame
