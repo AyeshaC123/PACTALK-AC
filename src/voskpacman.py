@@ -135,38 +135,45 @@ MAZE = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ]
 
-#Ghost class
+#Ghost claass: contains functions to define the red's ghosts movement throughout the maze
 
 class Ghost:
 # Initialize the Ghost object
     def __init__(self, x, y, image_path, target=None):
         self.x_pos = x * CELL_SIZE
         self.y_pos = y * CELL_SIZE
-        # Scale the ghost's image to fit the cell size
+
+        # Scaling the ghost's image to fit the cell size
         self.image = pygame.transform.scale(pygame.image.load(image_path), (CELL_SIZE, CELL_SIZE))
         self.direction = 0
         self.speed = 2
         self.turns = [False, False, False, False]
         self.target = target
+        
     # Calculate turns based on the current position and the maze structure
     def calculate_turns(self):
         grid_x = self.x_pos // CELL_SIZE
         grid_y = self.y_pos // CELL_SIZE
         self.turns = [False, False, False, False]
+
         # Check if moving right
         if MAZE[grid_y][grid_x + 1] != 1:
             self.turns[0] = True
+
         # Check if moving left
         if MAZE[grid_y][grid_x - 1] != 1:
             self.turns[1] = True
+
         # Check if moving up is valid
         if MAZE[grid_y - 1][grid_x] != 1:
             self.turns[2] = True
+
         # Check if moving down is valid
         if MAZE[grid_y + 1][grid_x] != 1:
             self.turns[3] = True
 
-    # Function for having BLINKY chase PACMAN
+    # Function for having BLINKY chase PACMAN using the "shortest distance"
+    # This function uses squared Euclidean distance as a heuristic to estimate shortest distance from current position to target position
     def move_blinky(self):
         # Check if the ghost is aligned
         if self.x_pos % CELL_SIZE == 0 and self.y_pos % CELL_SIZE == 0:
@@ -177,7 +184,8 @@ class Ghost:
             # Update valid turn directions
             self.calculate_turns()
 
-            moves = []  # List to store potential moves
+            # The moves[] list is used to store potential moves
+            moves = []  
             if self.turns[0]:
                 moves.append(((grid_x + 1, grid_y), (target_x - (grid_x + 1))**2 + (target_y - grid_y)**2, 0))
             if self.turns[1]:
@@ -187,10 +195,11 @@ class Ghost:
             if self.turns[3]:
                 moves.append(((grid_x, grid_y + 1), (target_x - grid_x)**2 + (target_y - (grid_y + 1))**2, 3))
 
-            # Choose the move with the shortest distance to PACMAN
+            # Then, choose the move with the shortest distance to PACMAN
             if moves:
                 best_move = min(moves, key=lambda x: x[1])
                 self.direction = best_move[2]
+
         # Move the ghost in the chosen direction
         if self.direction == 0:
             self.x_pos += self.speed
@@ -205,6 +214,7 @@ class Ghost:
             self.x_pos = GAME_SCREEN_WIDTH - CELL_SIZE
         elif self.x_pos >= GAME_SCREEN_WIDTH:
             self.x_pos = 0
+            
     # Handle screen wrapping for horizontal movement
     def draw(self):
         screen.blit(self.image, (self.x_pos + HISTORY_WIDTH, self.y_pos))
@@ -537,13 +547,13 @@ def check_collision(pacman, blinky):
     :param blinky: Ghost object
     :return: True if there is a collision, False otherwise
     """
-    # Pac-Man's position in pixels
+    # Get position in pixels for PACMAN
     pacman_pos = (pacman.x * CELL_SIZE, pacman.y * CELL_SIZE)
     
-    # Blinky's position in pixels
+    # Get Blinky's position in pixels
     blinky_pos = (blinky.x_pos, blinky.y_pos)
     
-    # Check if the distance between Pac-Man and Blinky is less than the collision threshold
+    # Identify the collision by checking if the distance between Pac-Man and Blinky is less than the collision threshold
     collision_distance = CELL_SIZE // 2  
     distance = math.sqrt((pacman_pos[0] - blinky_pos[0])**2 + (pacman_pos[1] - blinky_pos[1])**2)
     return distance < collision_distance
@@ -689,10 +699,11 @@ def main():
                 command_history.add_command(direction_text)
                 pacman.move_multiple(direction, steps)
         
-        # Update game state
-        # Replace existing collision logic with the `check_collision` function
+        # Performing check to analyze if Blinky and PACMAN collided
         if check_collision(pacman, blinky):
             command_history.add_command("Game Over - Caught by Blinky!")
+
+            # Logic to display "GAME OVER" message
             font = pygame.font.Font(None, 74)
             text = font.render("GAME OVER", True, RED)
             text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
