@@ -63,21 +63,25 @@ class GameState(Enum):
 
 # Command History
 class CommandHistory:
+
+    # Initialize the CommandHistory object.
     def __init__(self, max_commands=15):
         self.commands = deque(maxlen=max_commands)
         self.font = pygame.font.Font(None, 24)
     
+    # Add a command to the history with a timestamp.
     def add_command(self, command):
         timestamp = time.strftime("%H:%M:%S")
         self.commands.append(f"[{timestamp}] {command}")
-    
+
+    # Draw the command history panel and its contents onto the screen.
     def draw(self):
-        # Draw background for history panel
+        # Draw the background for the history panel
         history_rect = pygame.Rect(0, 0, HISTORY_WIDTH, SCREEN_HEIGHT)
         pygame.draw.rect(screen, GRAY, history_rect)
         pygame.draw.line(screen, WHITE, (HISTORY_WIDTH-1, 0), (HISTORY_WIDTH-1, SCREEN_HEIGHT), 2)
         
-        # Draw title
+        # Draw the title
         title = self.font.render("Command History", True, WHITE)
         title_rect = title.get_rect(centerx=HISTORY_WIDTH//2, top=10)
         screen.blit(title, title_rect)
@@ -87,11 +91,14 @@ class CommandHistory:
         y_offset = 50
         for command in reversed(self.commands):
             text = self.font.render(command, True, WHITE)
+
             # Wrap text if too long
             if text.get_width() > HISTORY_WIDTH - 20:
                 words = command.split()
                 current_line = words[0]
                 lines = []
+
+                 #Construct lines that fit within the panel width
                 for word in words[1:]:
                     test_line = current_line + " " + word
                     test_surface = self.font.render(test_line, True, WHITE)
@@ -101,11 +108,14 @@ class CommandHistory:
                         lines.append(current_line)
                         current_line = word
                 lines.append(current_line)
+
+                 # Render and draw each line
                 for line in lines:
                     text = self.font.render(line, True, WHITE)
                     screen.blit(text, (10, y_offset))
                     y_offset += 25
             else:
+                # If no wrapping is needed, draw the command directly
                 screen.blit(text, (10, y_offset))
                 y_offset += 25
                 
@@ -362,22 +372,26 @@ def draw_maze():
                                  (x * CELL_SIZE + CELL_SIZE // 2 + HISTORY_WIDTH,
                                   y * CELL_SIZE + CELL_SIZE // 2), 8)
 
+# Draw the pause screen overlay with a "PAUSED" message and instructions.
 def draw_pause_screen():
     overlay = pygame.Surface((GAME_SCREEN_WIDTH, SCREEN_HEIGHT))
     overlay.fill((0, 0, 0))
     overlay.set_alpha(128)
     screen.blit(overlay, (HISTORY_WIDTH, 0))
     
+    # Render the "paused" message's text
     font = pygame.font.Font(None, 74)
     text = font.render("PAUSED", True, WHITE)
     text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)) # calculates the spot on screen
     screen.blit(text, text_rect) # draws it there
-    #  renders the instruction text
+
+    # Render the instruction text for resuming the game
     font_small = pygame.font.Font(None, 36)
     instruction = font_small.render("Say 'Resume' to continue", True, WHITE)
     instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
     screen.blit(instruction, instruction_rect)
 
+# Draws a microphone indicator showing whether the system is listening or idle.
 def draw_microphone_indicator(is_listening):
     mic_size = 30
     mic_x = 20
@@ -402,6 +416,7 @@ def draw_microphone_indicator(is_listening):
     text_surface = font.render(status_text, True, WHITE)
     screen.blit(text_surface, (mic_x + 20, mic_y - 10))
 
+#  Draws the start screen with the game title and instructions for voice commands.
 def draw_start_screen():
     screen.fill(BLACK)
     title_font = pygame.font.Font(None, 53)
@@ -470,6 +485,7 @@ def calibrate_microphone(p, rate=16000, channels=1, duration=2):
     # return background noise as raw data
     return b"".join(frames)
 
+#The voice_command_listener function listens for voice commands, processes them, and also sends actions to the game via a command queue.
 def voice_command_listener():
     recognizer = KaldiRecognizer(model, 16000) # processes 16kHz audio using the pre-loaded language model
     p = pyaudio.PyAudio() 
@@ -541,7 +557,7 @@ def voice_command_listener():
 
 def check_collision(pacman, blinky):
     """
-    Check for a collision between Pac-Man and the ghost (Blinky).
+    Check for a collision between Pac-Man and the Blinky ghost
 
     :param pacman: PacMan object
     :param blinky: Ghost object
