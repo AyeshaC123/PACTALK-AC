@@ -29,6 +29,6 @@ Versions:
 2. [src/assets/ghost_images](src/assets/ghost_images): Folder that contains ghost drawing images used in the game.
 3. [src/__pycache__/board.cpython-312.pyc](src/__pycache__/board.cpython-312.pyc): Compiled Python bytecode file created by Python 3.12 to optimize execution of the `board.py` script.
 
-
+## Collaborators: ifrahMalik, SpandanaBondalapati, shannon-joseph, AyeshaC123
 
     
